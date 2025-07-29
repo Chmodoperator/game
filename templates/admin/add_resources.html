@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .resource-info {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .resource-item {
+        display: inline-block;
+        margin-right: 20px;
+        padding: 8px 12px;
+        background: #e9ecef;
+        border-radius: 3px;
+        font-weight: bold;
+    }
+    .resource-item.energy { background: #fff3cd; color: #856404; }
+    .resource-item.minerals { background: #d1ecf1; color: #0c5460; }
+    .resource-item.food { background: #d4edda; color: #155724; }
+    .resource-item.technology { background: #e2e3e5; color: #383d41; }
+    .resource-item.gold { background: #fff3cd; color: #856404; border: 2px solid #ffc107; }
+    .form-help {
+        background: #e7f3ff;
+        border-left: 4px solid #007cba;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="resource-info">
+    <h3>Current Resources for {{ empire.name }}</h3>
+    <div class="resource-item energy">⚡ Energy: {{ current_resources.energy|floatformat:0 }}/{{ current_resources.energy_storage|floatformat:0 }}</div>
+    <div class="resource-item minerals">⛏ Minerals: {{ current_resources.minerals|floatformat:0 }}/{{ current_resources.mineral_storage|floatformat:0 }}</div>
+    <div class="resource-item food">🌾 Food: {{ current_resources.food|floatformat:0 }}/{{ current_resources.food_storage|floatformat:0 }}</div>
+    <div class="resource-item technology">🔬 Technology: {{ current_resources.technology|floatformat:0 }}</div>
+    <div class="resource-item gold">💰 Gold: {{ current_resources.gold|floatformat:0 }}</div>
+</div>
+
+<div class="form-help">
+    <strong>Instructions:</strong>
+    <ul>
+        <li>Enter amounts to add to current resources, or check "Set absolute values" to replace current amounts</li>
+        <li>Leave fields at 0 to make no changes to that resource</li>
+        <li>Resources will automatically be capped at storage limits (except Technology)</li>
+    </ul>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <fieldset class="module aligned">
+        <h2>Resource Management</h2>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.energy.id_for_label }}">Energy:</label>
+                {{ form.energy }}
+                {% if form.energy.help_text %}<p class="help">{{ form.energy.help_text }}</p>{% endif %}
+                {% if form.energy.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.energy.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.minerals.id_for_label }}">Minerals:</label>
+                {{ form.minerals }}
+                {% if form.minerals.help_text %}<p class="help">{{ form.minerals.help_text }}</p>{% endif %}
+                {% if form.minerals.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.minerals.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.food.id_for_label }}">Food:</label>
+                {{ form.food }}
+                {% if form.food.help_text %}<p class="help">{{ form.food.help_text }}</p>{% endif %}
+                {% if form.food.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.food.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.technology.id_for_label }}">Technology:</label>
+                {{ form.technology }}
+                {% if form.technology.help_text %}<p class="help">{{ form.technology.help_text }}</p>{% endif %}
+                {% if form.technology.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.technology.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.gold.id_for_label }}">Gold:</label>
+                {{ form.gold }}
+                {% if form.gold.help_text %}<p class="help">{{ form.gold.help_text }}</p>{% endif %}
+                {% if form.gold.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.gold.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                {{ form.set_absolute }}
+                <label for="{{ form.set_absolute.id_for_label }}">{{ form.set_absolute.label }}</label>
+                {% if form.set_absolute.help_text %}<p class="help">{{ form.set_absolute.help_text }}</p>{% endif %}
+            </div>
+        </div>
+    </fieldset>
+    
+    <div class="submit-row">
+        <input type="submit" value="Apply Changes" class="default" />
+        <a href="{% url 'admin:game_empire_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const setAbsoluteCheckbox = document.getElementById('{{ form.set_absolute.id_for_label }}');
+    const helpTexts = document.querySelectorAll('.help');
+    
+    function updateHelpTexts() {
+        helpTexts.forEach(function(helpText) {
+            if (setAbsoluteCheckbox.checked) {
+                helpText.textContent = helpText.textContent.replace('to add', 'to set as new value');
+                helpText.textContent = helpText.textContent.replace('(0 = no change)', '(0 = set to zero)');
+            } else {
+                helpText.textContent = helpText.textContent.replace('to set as new value', 'to add');
+                helpText.textContent = helpText.textContent.replace('(0 = set to zero)', '(0 = no change)');
+            }
+        });
+    }
+    
+    setAbsoluteCheckbox.addEventListener('change', updateHelpTexts);
+});
+</script>
+{% endblock %} 

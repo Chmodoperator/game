@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Nova Terra{% endblock %}
+
+{% block content %}
+<div class="terminal-form">
+    <div style="text-align: center; margin-bottom: 20px;">
+        ┌─────────────────────────────────────────────────────────────────────────────────────┐
+        │                           COMMANDER REGISTRATION PROTOCOL                          │
+        │                              [ NEW RECRUIT SIGNUP ]                                │
+        └─────────────────────────────────────────────────────────────────────────────────────┘
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <label class="form-label" for="username">Commander ID:</label>
+            <input type="text" name="username" id="username" class="form-input" 
+                   placeholder="Choose your commander callsign" required>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="email">Communication Frequency:</label>
+            <input type="email" name="email" id="email" class="form-input" 
+                   placeholder="your.email@domain.com" required>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="password">Security Code:</label>
+            <input type="password" name="password" id="password" class="form-input" 
+                   placeholder="Create secure access code" required>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="password_confirm">Confirm Security Code:</label>
+            <input type="password" name="password_confirm" id="password_confirm" class="form-input" 
+                   placeholder="Confirm access code" required>
+        </div>
+
+        <div class="form-row">
+            <button type="submit" class="form-button">
+                [ REGISTER NEW COMMANDER ]
+            </button>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; text-align: center; border-top: 1px solid currentColor; padding-top: 20px;">
+        <p>Already have access credentials? 
+            <a href="{% url 'accounts:login' %}">[ ACCESS MAIN TERMINAL ]</a>
+        </p>
+        
+        <div style="margin-top: 20px; opacity: 0.7; font-size: 12px;">
+            ┌─ RECRUITMENT NOTICE ───────────────────────────────────────────────────────────────┐
+            │ By registering, you agree to defend Nova Terra against all threats               │
+            │ Choose your commander ID wisely - it cannot be changed                           │
+            │ Strong passwords recommended for maximum security                                 │
+            └────────────────────────────────────────────────────────────────────────────────────┘
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('username').focus();
+    
+    // Password confirmation validation
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('password_confirm');
+    
+    function validatePasswords() {
+        if (password.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Security codes do not match');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    }
+    
+    password.addEventListener('input', validatePasswords);
+    confirmPassword.addEventListener('input', validatePasswords);
+});
+</script>
+{% endblock %} 

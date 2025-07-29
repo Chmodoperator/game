@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% load math_filters %}
+
+{% block title %}Royal Academy - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<!-- Hidden CSRF Token for AJAX requests -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<!-- Research Grid -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h4 style="color: #44ff44; margin: 0;">🏛️ ROYAL ACADEMY OF KNOWLEDGE</h4>
+        <div style="font-size: 12px; color: #aaa;">
+            Research unlocks permanent empire bonuses
+        </div>
+    </div>
+    
+    <!-- Research Items Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+        {% for research in research_list %}
+        <div class="research-card {% if research.level > 0 %}researched{% elif research.research_started %}researching{% else %}available{% endif %}" 
+             data-research-type="{{ research.research_type }}"
+             onclick="window.location.href='/game/research/{{ research.research_type }}/'">
+            
+            <!-- Research Icon and Title -->
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                <div style="font-size: 28px; margin-right: 10px;">
+                    {% if research.research_type == "warfare_tactics" %}⚔️
+                    {% elif research.research_type == "fortification_arts" %}🛡️
+                    {% elif research.research_type == "resource_alchemy" %}⚗️
+                    {% elif research.research_type == "agricultural_mastery" %}🌾
+                    {% elif research.research_type == "mining_expertise" %}⛏️
+                    {% elif research.research_type == "royal_engineering" %}🏗️
+                    {% elif research.research_type == "diplomatic_arts" %}🤝
+                    {% else %}📚{% endif %}
+                </div>
+                <div>
+                    <div style="font-size: 14px; font-weight: bold; color: #fff;">
+                        {{ research.get_research_type_display }}
+                    </div>
+                    <div style="font-size: 12px; color: #aaa;">
+                        Level {{ research.level }}{% if research.level >= 100 %} (MAX){% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Research Benefits -->
+            <div style="font-size: 11px; color: #ccc; margin-bottom: 10px; line-height: 1.4;">
+                {% if research.research_type == "warfare_tactics" %}
+                    ⚔️ Army Attack: +{{ research.level|mul:2 }}%<br>
+                    🗡️ Improves battle effectiveness
+                {% elif research.research_type == "fortification_arts" %}
+                    🛡️ Army Defense: +{{ research.level|mul:2 }}%<br>
+                    🏰 Strengthens defensive positions
+                {% elif research.research_type == "resource_alchemy" %}
+                    🔄 Conversion Efficiency: +{{ research.level|mul:5 }}%<br>
+                    💰 Advanced resource trading
+                {% elif research.research_type == "agricultural_mastery" %}
+                    🌾 Food Production: +{{ research.level|mul:3 }}%<br>
+                    👥 Supports larger populations
+                {% elif research.research_type == "mining_expertise" %}
+                    ⛏️ Mineral Extraction: +{{ research.level|mul:3 }}%<br>
+                    💎 Deep mining techniques
+                {% elif research.research_type == "royal_engineering" %}
+                    🏗️ Building Speed: +{{ research.level|mul:4 }}%<br>
+                    💰 Cost Reduction: -{{ research.level|mul:1 }}%
+                {% elif research.research_type == "diplomatic_arts" %}
+                    🤝 Diplomatic Relations: +{{ research.level|mul:2 }}%<br>
+                    👑 Unlocks royal alliances
+                {% endif %}
+            </div>
+            
+            <!-- Progress Bar or Action Button -->
+            {% if research.research_started and research.research_complete %}
+                {% now "U" as current_time %}
+                {% if research.research_complete|date:"U"|add:"0" > current_time|add:"0" %}
+                    <!-- Research in Progress -->
+                    <div style="margin-bottom: 10px;">
+                        <div style="font-size: 10px; color: #ffaa44; margin-bottom: 3px;">⏱️ RESEARCHING</div>
+                        <div style="background: #333; border: 1px solid #666; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div class="research-progress" data-research-id="{{ research.id }}" 
+                                 data-start-time="{{ research.research_started|date:'U' }}"
+                                 data-end-time="{{ research.research_complete|date:'U' }}"
+                                 style="background: linear-gradient(90deg, #44ff44, #66ff66); height: 100%; width: 0%; transition: width 0.3s ease;">
+                            </div>
+                        </div>
+                        <div style="font-size: 9px; color: #aaa; margin-top: 2px;" id="research-time-{{ research.id }}">
+                            Calculating...
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Research Complete -->
+                    <div style="text-align: center; color: #44ff44; font-size: 10px; margin-bottom: 10px;">
+                        ✅ RESEARCH COMPLETE!
+                    </div>
+                {% endif %}
+            {% endif %}
+            
+            <!-- Research Button -->
+            {% if not research.research_started and research.level < 100 %}
+                <button class="research-button" 
+                        data-research-type="{{ research.research_type }}"
+                        onclick="event.stopPropagation();"
+                        style="width: 100%; padding: 8px; font-size: 10px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    {% if research.level == 0 %}
+                        🔬 BEGIN RESEARCH
+                    {% else %}
+                        📈 ADVANCE TO LV.{{ research.level|add:"1" }}
+                    {% endif %}
+                    <div style="font-size: 9px; margin-top: 2px;">
+                        ⚡{{ research.level|add:1|mul:500|floatformat:0 }} ⛏{{ research.level|add:1|mul:300|floatformat:0 }} 🌾{{ research.level|add:1|mul:200|floatformat:0 }}
+                    </div>
+                </button>
+            {% elif research.level >= 100 %}
+                <div style="text-align: center; color: #ffaa00; font-weight: bold; padding: 8px; background: rgba(255, 170, 0, 0.1); border-radius: 3px;">
+                    👑 MASTERED 👑
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Research Categories -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ RESEARCH CATEGORIES ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        <div style="border: 1px solid #ff4444; padding: 15px; background: rgba(255, 68, 68, 0.1); border-radius: 6px;">
+            <strong style="color: #ff4444; font-size: 14px;">⚔️ MILITARY SCIENCES</strong>
+            <div style="font-size: 11px; color: #ccc; margin-top: 8px; line-height: 1.4;">
+                • Warfare Tactics - Combat effectiveness<br>
+                • Fortification Arts - Defensive mastery<br>
+                <em>Essential for military expansion</em>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.1); border-radius: 6px;">
+            <strong style="color: #44ff44; font-size: 14px;">🏭 ECONOMIC SCIENCES</strong>
+            <div style="font-size: 11px; color: #ccc; margin-top: 8px; line-height: 1.4;">
+                • Agricultural Mastery - Food production<br>
+                • Mining Expertise - Resource extraction<br>
+                • Resource Alchemy - Material conversion<br>
+                <em>Foundation of kingdom prosperity</em>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #00aaff; padding: 15px; background: rgba(0, 170, 255, 0.1); border-radius: 6px;">
+            <strong style="color: #00aaff; font-size: 14px;">🏛️ ROYAL SCIENCES</strong>
+            <div style="font-size: 11px; color: #ccc; margin-top: 8px; line-height: 1.4;">
+                • Royal Engineering - Construction mastery<br>
+                • Diplomatic Arts - International relations<br>
+                <em>Advanced civilization development</em>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resource Conversion Panel (only show if Resource Alchemy is researched) -->
+{% for research in research_list %}
+{% if research.research_type == "resource_alchemy" and research.level > 0 %}
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ ⚗️ ALCHEMICAL LABORATORY ]</h3>
+    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-bottom: 15px; border-radius: 6px;">
+        <strong style="color: #ffaa44;">🔬 Conversion Efficiency: {{ research.level|mul:5 }}%</strong>
+        <div style="font-size: 11px; color: #aaa; margin-top: 5px;">
+            Higher levels reduce conversion losses
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+        <div style="text-align: center; border: 1px solid #ffaa00; padding: 15px; background: rgba(255, 170, 0, 0.1); border-radius: 6px;">
+            <h4 style="color: #ffaa00; margin: 0 0 10px 0;">⚡ Energy</h4>
+            <input type="number" id="energy-convert" placeholder="Amount" style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 5px;">
+                <button class="convert-btn" data-from="energy" data-to="minerals" style="flex: 1; padding: 6px; font-size: 10px; background: #aaa; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ ⛏️</button>
+                <button class="convert-btn" data-from="energy" data-to="food" style="flex: 1; padding: 6px; font-size: 10px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ 🌾</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; border: 1px solid #aaa; padding: 15px; background: rgba(170, 170, 170, 0.1); border-radius: 6px;">
+            <h4 style="color: #aaa; margin: 0 0 10px 0;">⛏️ Minerals</h4>
+            <input type="number" id="minerals-convert" placeholder="Amount" style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 5px;">
+                <button class="convert-btn" data-from="minerals" data-to="energy" style="flex: 1; padding: 6px; font-size: 10px; background: #ffaa00; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ ⚡</button>
+                <button class="convert-btn" data-from="minerals" data-to="food" style="flex: 1; padding: 6px; font-size: 10px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ 🌾</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.1); border-radius: 6px;">
+            <h4 style="color: #44ff44; margin: 0 0 10px 0;">🌾 Food</h4>
+            <input type="number" id="food-convert" placeholder="Amount" style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 5px;">
+                <button class="convert-btn" data-from="food" data-to="energy" style="flex: 1; padding: 6px; font-size: 10px; background: #ffaa00; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ ⚡</button>
+                <button class="convert-btn" data-from="food" data-to="minerals" style="flex: 1; padding: 6px; font-size: 10px; background: #aaa; color: #000; border: none; border-radius: 3px; cursor: pointer;">→ ⛏️</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Research Tips -->
+<div class="dashboard-panel">
+    <h3>[ RESEARCH STRATEGY ]</h3>
+    <div style="font-size: 12px; color: #ccc; line-height: 1.6;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div>
+                <strong style="color: #44ff44;">🎯 EARLY GAME:</strong><br>
+                Agricultural Mastery & Mining Expertise<br>
+                <em>Build economic foundation</em>
+            </div>
+            <div>
+                <strong style="color: #ffaa44;">⚔️ MID GAME:</strong><br>
+                Warfare Tactics & Fortification Arts<br>
+                <em>Military expansion phase</em>
+            </div>
+            <div>
+                <strong style="color: #00aaff;">🏛️ LATE GAME:</strong><br>
+                Royal Engineering & Diplomatic Arts<br>
+                <em>Kingdom perfection</em>
+            </div>
+            <div>
+                <strong style="color: #aa44ff;">🔬 ADVANCED:</strong><br>
+                Resource Alchemy<br>
+                <em>Ultimate resource control</em>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Research form handling
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle research buttons
+    document.querySelectorAll('.research-button').forEach(button => {
+        button.addEventListener('click', async function() {
+            const researchType = this.dataset.researchType;
+            
+            const response = await fetch('/game/api/research/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    research_type: researchType
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Handle resource conversion
+    document.querySelectorAll('.convert-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const fromResource = this.dataset.from;
+            const toResource = this.dataset.to;
+            const amount = parseInt(document.getElementById(fromResource + '-convert').value);
+            
+            if (!amount || amount <= 0) {
+                NovaGame.showNotification('Please enter a valid amount to convert!', 'error');
+                return;
+            }
+            
+            const response = await fetch('/game/api/convert-resources/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    from_resource: fromResource,
+                    to_resource: toResource,
+                    amount: amount
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                document.getElementById(fromResource + '-convert').value = '';
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Research progress tracking
+    function updateResearchProgress() {
+        document.querySelectorAll('.research-progress').forEach(progressBar => {
+            const researchId = progressBar.dataset.researchId;
+            const startTime = parseInt(progressBar.dataset.startTime);
+            const endTime = parseInt(progressBar.dataset.endTime);
+            const timeDisplay = document.getElementById(`research-time-${researchId}`);
+            
+            if (startTime && endTime && timeDisplay) {
+                const now = Math.floor(Date.now() / 1000);
+                const totalTime = endTime - startTime;
+                const elapsed = now - startTime;
+                const remaining = endTime - now;
+                
+                if (remaining > 0) {
+                    const progress = Math.min(100, (elapsed / totalTime) * 100);
+                    progressBar.style.width = progress + '%';
+                    
+                    const hours = Math.floor(remaining / 3600);
+                    const minutes = Math.floor((remaining % 3600) / 60);
+                    const seconds = remaining % 60;
+                    
+                    let timeString = '';
+                    if (hours > 0) {
+                        timeString = `${hours}h ${minutes}m ${seconds}s`;
+                    } else if (minutes > 0) {
+                        timeString = `${minutes}m ${seconds}s`;
+                    } else {
+                        timeString = `${seconds}s`;
+                    }
+                    
+                    timeDisplay.textContent = `${progress.toFixed(1)}% - ${timeString}`;
+                } else {
+                    progressBar.style.width = '100%';
+                    timeDisplay.textContent = 'Complete! Refresh to finish.';
+                    timeDisplay.style.color = '#44ff44';
+                }
+            }
+        });
+    }
+    
+    // Update progress every second
+    updateResearchProgress();
+    setInterval(updateResearchProgress, 1000);
+});
+</script>
+
+<style>
+.research-card {
+    border: 1px solid #333;
+    padding: 15px;
+    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.research-card.available {
+    border-color: #44ff44;
+    background: linear-gradient(145deg, #1a2a1a, #2a3a2a);
+}
+
+.research-card.researching {
+    border-color: #ffaa00;
+    background: linear-gradient(145deg, #2a2a1a, #3a3a2a);
+    animation: pulse 2s infinite;
+}
+
+.research-card.researched {
+    border-color: #00aaff;
+    background: linear-gradient(145deg, #1a1a2a, #2a2a3a);
+}
+
+.research-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+.research-button {
+    transition: all 0.2s ease;
+}
+
+.research-button:hover {
+    background: #66ff66 !important;
+    transform: scale(1.02);
+}
+
+.convert-btn {
+    transition: all 0.2s ease;
+}
+
+.convert-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+.research-progress {
+    animation: progress-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes progress-glow {
+    from { box-shadow: 0 0 5px rgba(68, 255, 68, 0.5); }
+    to { box-shadow: 0 0 15px rgba(68, 255, 68, 0.8); }
+}
+</style>
+{% endblock %} 

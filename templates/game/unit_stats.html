@@ -1,0 +1,1045 @@
+{% extends "base.html" %}
+
+{% block title %}Unit Statistics{% endblock %}
+
+{% block content %}
+<div class="unit-stats-container">
+    <h1>⚔️ Unit Combat Statistics</h1>
+    
+    <div class="stats-table">
+        <table class="unit-table">
+            <thead>
+                <tr>
+                    <th>Unit Type</th>
+                    <th>⚔️ Attack</th>
+                    <th>🛡️ vs Infantry</th>
+                    <th>🛡️ vs Archers</th>
+                    <th>🛡️ vs Spearmen</th>
+                    <th>🛡️ vs Heavy Knights</th>
+                    <th>🛡️ vs Royal Knights</th>
+                    <th>🛡️ vs Spies</th>
+                    <th>📦 Storage</th>
+                    <th>🏃 Speed</th>
+                    <th>💰 Cost (⚡⛏️🌾)</th>
+                    <th>⏱️ Training Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="unit-row infantry" onclick="showUnitModal('infantry')">
+                    <td><strong>🪖 Infantry</strong><br><span style="font-size:11px;color:#ffaa00;">Versatile frontline fighters. Good against infantry, weak vs cavalry.</span></td>
+                    <td class="attack">12</td>
+                    <td class="defense">15</td>
+                    <td class="defense">8</td>
+                    <td class="defense">12</td>
+                    <td class="defense">6</td>
+                    <td class="defense">4</td>
+                    <td class="defense">10</td>
+                    <td class="storage">40</td>
+                    <td class="speed">6</td>
+                    <td class="cost">3⚡ 2⛏️ 1🌾</td>
+                    <td class="time">45s</td>
+                </tr>
+                <tr class="unit-row archers" onclick="showUnitModal('archers')">
+                    <td><strong>🏹 Archers</strong><br><span style="font-size:11px;color:#ffaa00;">Ranged attackers with high damage. Fragile but deadly.</span></td>
+                    <td class="attack">18</td>
+                    <td class="defense">6</td>
+                    <td class="defense">12</td>
+                    <td class="defense">8</td>
+                    <td class="defense">4</td>
+                    <td class="defense">3</td>
+                    <td class="defense">8</td>
+                    <td class="storage">35</td>
+                    <td class="speed">7</td>
+                    <td class="cost">4⚡ 3⛏️ 2🌾</td>
+                    <td class="time">60s</td>
+                </tr>
+                <tr class="unit-row spearmen" onclick="showUnitModal('spearmen')">
+                    <td><strong>🔱 Spearmen</strong><br><span style="font-size:11px;color:#ffaa00;">Anti-cavalry specialists. Excellent vs knights, slow movement.</span></td>
+                    <td class="attack">10</td>
+                    <td class="defense">14</td>
+                    <td class="defense">10</td>
+                    <td class="defense">16</td>
+                    <td class="defense">20</td>
+                    <td class="defense">18</td>
+                    <td class="defense">12</td>
+                    <td class="storage">45</td>
+                    <td class="speed">5</td>
+                    <td class="cost">3⚡ 4⛏️ 2🌾</td>
+                    <td class="time">75s</td>
+                </tr>
+                <tr class="unit-row heavy_knights" onclick="showUnitModal('heavy_knights')">
+                    <td><strong>🐎 Heavy Knights</strong><br><span style="font-size:11px;color:#ffaa00;">Fast, powerful cavalry. Dominates infantry and archers.</span></td>
+                    <td class="attack">25</td>
+                    <td class="defense">8</td>
+                    <td class="defense">6</td>
+                    <td class="defense">4</td>
+                    <td class="defense">12</td>
+                    <td class="defense">8</td>
+                    <td class="defense">6</td>
+                    <td class="storage">80</td>
+                    <td class="speed">9</td>
+                    <td class="cost">8⚡ 6⛏️ 4🌾</td>
+                    <td class="time">120s</td>
+                </tr>
+                <tr class="unit-row royal_knights" onclick="showUnitModal('royal_knights')">
+                    <td><strong>👑 Royal Knights</strong><br><span style="font-size:11px;color:#ffaa00;">Elite cavalry with highest stats. End-game powerhouse.</span></td>
+                    <td class="attack">35</td>
+                    <td class="defense">10</td>
+                    <td class="defense">8</td>
+                    <td class="defense">6</td>
+                    <td class="defense">15</td>
+                    <td class="defense">20</td>
+                    <td class="defense">8</td>
+                    <td class="storage">100</td>
+                    <td class="speed">10</td>
+                    <td class="cost">15⚡ 12⛏️ 8🌾</td>
+                    <td class="time">180s</td>
+                </tr>
+                <tr class="unit-row spies" onclick="showUnitModal('spies')">
+                    <td><strong>🕵️ Spies</strong><br><span style="font-size:11px;color:#ffaa00;">Intelligence units. No combat power, gather information.</span></td>
+                    <td class="attack">0</td>
+                    <td class="defense">2</td>
+                    <td class="defense">2</td>
+                    <td class="defense">2</td>
+                    <td class="defense">2</td>
+                    <td class="defense">2</td>
+                    <td class="defense">5</td>
+                    <td class="storage">20</td>
+                    <td class="speed">12</td>
+                    <td class="cost">10⚡ 5⛏️ 15🌾</td>
+                    <td class="time">300s</td>
+                </tr>
+                <tr class="unit-row catapult" onclick="showUnitModal('catapult')">
+                    <td><strong>🏰 Catapult</strong><br><span style="font-size:11px;color:#ffaa00;">Siege engine. Destroys buildings, weak in combat.</span></td>
+                    <td class="attack">8</td>
+                    <td class="defense">3</td>
+                    <td class="defense">3</td>
+                    <td class="defense">3</td>
+                    <td class="defense">3</td>
+                    <td class="defense">3</td>
+                    <td class="defense">1</td>
+                    <td class="storage">60</td>
+                    <td class="speed">2</td>
+                    <td class="cost">20⚡ 25⛏️ 10🌾</td>
+                    <td class="time">600s</td>
+                </tr>
+                <tr class="unit-row ram" onclick="showUnitModal('ram')">
+                    <td><strong>🛡️ Ram</strong><br><span style="font-size:11px;color:#ffaa00;">Wall-breaker. High defense, targets fortifications.</span></td>
+                    <td class="attack">15</td>
+                    <td class="defense">5</td>
+                    <td class="defense">4</td>
+                    <td class="defense">6</td>
+                    <td class="defense">4</td>
+                    <td class="defense">4</td>
+                    <td class="defense">2</td>
+                    <td class="storage">70</td>
+                    <td class="speed">3</td>
+                    <td class="cost">18⚡ 20⛏️ 8🌾</td>
+                    <td class="time">480s</td>
+                </tr>
+                <tr class="unit-row hero" onclick="showUnitModal('hero')">
+                    <td><strong>🧙 Hero</strong><br><span style="font-size:11px;color:#ffaa00;">Unique leader unit. Gains XP, boosts army morale.</span></td>
+                    <td class="attack">20</td>
+                    <td class="defense">12</td>
+                    <td class="defense">10</td>
+                    <td class="defense">14</td>
+                    <td class="defense">10</td>
+                    <td class="defense">12</td>
+                    <td class="defense">8</td>
+                    <td class="storage">50</td>
+                    <td class="speed">8</td>
+                    <td class="cost">50⚡ 40⛏️ 30🌾</td>
+                    <td class="time">900s</td>
+                </tr>
+                <tr class="unit-row healer" onclick="showUnitModal('healer')">
+                    <td><strong>🧑‍⚕️ Healer</strong><br><span style="font-size:11px;color:#ffaa00;">Non-combat support. Revives fallen troops after battle.</span></td>
+                    <td class="attack">0</td>
+                    <td class="defense">8</td>
+                    <td class="defense">6</td>
+                    <td class="defense">8</td>
+                    <td class="defense">5</td>
+                    <td class="defense">5</td>
+                    <td class="defense">6</td>
+                    <td class="storage">30</td>
+                    <td class="speed">6</td>
+                    <td class="cost">6⚡ 4⛏️ 8🌾</td>
+                    <td class="time">120s</td>
+                </tr>
+                <tr class="unit-row scout_hawk" onclick="showUnitModal('scout_hawk')">
+                    <td><strong>🦅 Scout Hawk</strong><br><span style="font-size:11px;color:#ffaa00;">Flying scout. Bypasses all ground units and spies.</span></td>
+                    <td class="attack">0</td>
+                    <td class="defense">0</td>
+                    <td class="defense">0</td>
+                    <td class="defense">0</td>
+                    <td class="defense">0</td>
+                    <td class="defense">0</td>
+                    <td class="defense">0</td>
+                    <td class="storage">15</td>
+                    <td class="speed">15</td>
+                    <td class="cost">8⚡ 3⛏️ 12🌾</td>
+                    <td class="time">90s</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Unit Modal -->
+    <div id="unitModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <div class="monster-stats">
+        <h2>👹 Monster Statistics</h2>
+        <table class="monster-table">
+            <thead>
+                <tr>
+                    <th>Monster Type</th>
+                    <th>⚔️ Attack</th>
+                    <th>🛡️ vs Infantry</th>
+                    <th>🛡️ vs Archers</th>
+                    <th>🛡️ vs Spearmen</th>
+                    <th>🛡️ vs Heavy Knights</th>
+                    <th>🛡️ vs Royal Knights</th>
+                    <th>🛡️ vs Spies</th>
+                    <th>💰 Loot (⚡⛏️🌾)</th>
+                    <th>📝 Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>🐺 Plains Wolves</strong></td>
+                    <td class="attack">35</td>
+                    <td class="defense">30</td>
+                    <td class="defense">18</td>
+                    <td class="defense">30</td>
+                    <td class="defense">20</td>
+                    <td class="defense">20</td>
+                    <td class="defense">30</td>
+                    <td class="loot">200 100 300</td>
+                    <td>Swift pack hunters that roam the plains</td>
+                </tr>
+                <tr>
+                    <td><strong>🏔️ Mountain Giants</strong></td>
+                    <td class="attack">100</td>
+                    <td class="defense">180</td>
+                    <td class="defense">48</td>
+                    <td class="defense">180</td>
+                    <td class="defense">156</td>
+                    <td class="defense">156</td>
+                    <td class="defense">180</td>
+                    <td class="loot">500 800 200</td>
+                    <td>Massive stone beings guarding mineral deposits</td>
+                </tr>
+                <tr>
+                    <td><strong>🦂 Desert Scorpions</strong></td>
+                    <td class="attack">60</td>
+                    <td class="defense">56</td>
+                    <td class="defense">24</td>
+                    <td class="defense">56</td>
+                    <td class="defense">32</td>
+                    <td class="defense">32</td>
+                    <td class="defense">56</td>
+                    <td class="loot">300 600 150</td>
+                    <td>Venomous desert dwellers protecting rare minerals</td>
+                </tr>
+                <tr>
+                    <td><strong>🌳 Forest Treants</strong></td>
+                    <td class="attack">70</td>
+                    <td class="defense">117</td>
+                    <td class="defense">63</td>
+                    <td class="defense">117</td>
+                    <td class="defense">90</td>
+                    <td class="defense">90</td>
+                    <td class="defense">117</td>
+                    <td class="loot">400 200 700</td>
+                    <td>Ancient tree guardians of the forest</td>
+                </tr>
+                <tr>
+                    <td><strong>🐙 Water Krakens</strong></td>
+                    <td class="attack">110</td>
+                    <td class="defense">88</td>
+                    <td class="defense">64</td>
+                    <td class="defense">88</td>
+                    <td class="defense">72</td>
+                    <td class="defense">72</td>
+                    <td class="defense">88</td>
+                    <td class="loot">600 400 500</td>
+                    <td>Legendary sea beasts ruling the depths</td>
+                </tr>
+                <tr>
+                    <td><strong>🐲 Volcanic Dragons</strong></td>
+                    <td class="attack">150</td>
+                    <td class="defense">182</td>
+                    <td class="defense">169</td>
+                    <td class="defense">182</td>
+                    <td class="defense">143</td>
+                    <td class="defense">143</td>
+                    <td class="defense">182</td>
+                    <td class="loot">1000 600 400</td>
+                    <td>Fearsome dragons of fire and molten rock</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="notes">
+        <h3>📝 Strategic Notes:</h3>
+        <ul>
+            <li><strong>🕵️ Spies:</strong> Cannot attack normal units, only other spies. Invisible to regular units.</li>
+            <li><strong>🦅 Scout Hawk:</strong> Cannot be attacked by any unit. Provides deep reconnaissance.</li>
+            <li><strong>🧙 Hero:</strong> Unique unit - only one per player. Gains XP and provides army bonuses.</li>
+            <li><strong>🧑‍⚕️ Healer:</strong> No attack power but revives 20% of casualties after battle.</li>
+            <li><strong>🏰 Catapult/Ram:</strong> Siege units essential for late-game conquest and building destruction.</li>
+            <li><strong>Counter System:</strong> Spearmen > Knights > Infantry > Archers > Spearmen</li>
+            <li><strong>Bonuses:</strong> Research and buildings provide additional attack/defense bonuses</li>
+            <li><strong>Monsters:</strong> Get stronger with level (+15% per level)</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.unit-stats-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.unit-stats-container h1 {
+    text-align: center;
+    color: #44ff44;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.unit-stats-container h2 {
+    color: #ffaa00;
+    margin: 30px 0 15px 0;
+    font-size: 22px;
+}
+
+.stats-table, .monster-stats {
+    margin-bottom: 30px;
+}
+
+.unit-table, .monster-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #2a2a2a;
+    border: 2px solid #44ff44;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 11px;
+}
+
+.unit-table th, .unit-table td,
+.monster-table th, .monster-table td {
+    padding: 8px 4px;
+    text-align: center;
+    border: 1px solid #333;
+}
+
+.unit-table th, .monster-table th {
+    background: #44ff44;
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.unit-row {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.unit-row:hover {
+    background: #3a3a3a !important;
+    transform: scale(1.01);
+    box-shadow: 0 0 15px rgba(68, 255, 68, 0.3);
+}
+
+.attack { color: #ff4444; font-weight: bold; }
+.defense { color: #4444ff; font-weight: bold; }
+.storage { color: #44ff44; font-weight: bold; }
+.speed { color: #ffaa00; font-weight: bold; }
+.cost { color: #ff44ff; font-weight: bold; }
+.time { color: #44ffff; font-weight: bold; }
+.loot { color: #ffff44; font-weight: bold; }
+
+.notes {
+    background: #2a2a2a;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #44ff44;
+}
+
+.notes h3 {
+    color: #44ff44;
+    margin-top: 0;
+}
+
+.notes ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.notes li {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    margin: 8% auto;
+    padding: 0;
+    border: 2px solid #44ff44;
+    border-radius: 12px;
+    width: 70%;
+    max-width: 600px;
+    max-height: 70vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 0 20px rgba(68, 255, 68, 0.4);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    z-index: 1001;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover,
+.close:focus {
+    color: #44ff44;
+    text-decoration: none;
+}
+
+.unit-modal-header {
+    background: linear-gradient(145deg, #44ff44, #22cc22);
+    color: #000;
+    padding: 12px;
+    text-align: center;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+}
+
+.unit-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.unit-modal-header .unit-icon {
+    font-size: 28px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.unit-modal-body {
+    padding: 20px;
+    color: #fff;
+}
+
+.unit-lore {
+    background: rgba(68, 255, 68, 0.1);
+    border-left: 3px solid #44ff44;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+    line-height: 1.4;
+    font-size: 13px;
+}
+
+.unit-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    background: rgba(68, 68, 68, 0.3);
+    border: 1px solid #44ff44;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+}
+
+.stat-card h4 {
+    color: #44ff44;
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.stat-card .stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.defense-breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.defense-item {
+    background: rgba(68, 68, 255, 0.2);
+    border: 1px solid #4444ff;
+    border-radius: 3px;
+    padding: 4px;
+    text-align: center;
+}
+
+.defense-label {
+    color: #aaa;
+    font-size: 8px;
+    margin-bottom: 2px;
+}
+
+.defense-value {
+    color: #4444ff;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.unit-abilities {
+    background: rgba(255, 170, 0, 0.1);
+    border: 1px solid #ffaa00;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.unit-abilities h3 {
+    color: #ffaa00;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.ability-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 6px;
+    background: rgba(255, 170, 0, 0.1);
+    border-radius: 4px;
+}
+
+.ability-icon {
+    font-size: 16px;
+    margin-right: 8px;
+    width: 24px;
+    text-align: center;
+}
+
+.ability-text {
+    flex: 1;
+    line-height: 1.3;
+    font-size: 12px;
+}
+
+.strategic-advice {
+    background: rgba(68, 68, 255, 0.1);
+    border: 1px solid #4444ff;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.strategic-advice h3 {
+    color: #4444ff;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.strategic-advice ul {
+    margin: 0;
+    padding-left: 15px;
+}
+
+.strategic-advice li {
+    margin-bottom: 6px;
+    line-height: 1.3;
+    font-size: 12px;
+}
+
+.unit-costs {
+    display: flex;
+    justify-content: space-around;
+    margin: 12px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cost-item {
+    background: rgba(255, 68, 255, 0.2);
+    border: 1px solid #ff44ff;
+    border-radius: 4px;
+    padding: 6px 10px;
+    text-align: center;
+    min-width: 60px;
+}
+
+.cost-item .cost-icon {
+    font-size: 16px;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.cost-item .cost-value {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .unit-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .unit-costs {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+// Unit data with lore and strategic information
+const unitData = {
+    infantry: {
+        name: "Infantry",
+        icon: "🪖",
+        lore: "The backbone of any army, these disciplined soldiers have been the foundation of military might since the dawn of civilization. Trained in the art of close combat, they form the shield wall that protects the realm from invaders. Though not the most glamorous of warriors, their reliability and versatility make them indispensable in any military campaign.",
+        stats: {
+            attack: 12,
+            defense: "15/8/12/6/4/10",
+            storage: 40,
+            speed: 6,
+            cost: "3⚡ 2⛏️ 1🌾",
+            time: "45 seconds"
+        },
+        abilities: [
+            { icon: "⚔️", text: "Balanced combat unit - effective against all unit types" },
+            { icon: "🛡️", text: "Strong defense against infantry and spearmen" },
+            { icon: "📦", text: "Moderate storage capacity for carrying loot" },
+            { icon: "⚡", text: "Fast training time allows for quick army building" }
+        ],
+        strategy: [
+            "Use as your primary defensive force against infantry attacks",
+            "Excellent for protecting archers and siege units",
+            "Cost-effective for early game expansion",
+            "Combine with spearmen to create a strong defensive line"
+        ]
+    },
+    archers: {
+        name: "Archers",
+        icon: "🏹",
+        lore: "Masters of the bow, these skilled marksmen rain death upon their enemies from a safe distance. Their arrows can pierce armor and strike fear into the hearts of charging cavalry. Though vulnerable in close combat, their ability to attack from range makes them a crucial component of any well-balanced army.",
+        stats: {
+            attack: 18,
+            defense: "6/12/8/4/3/8",
+            storage: 35,
+            speed: 7,
+            cost: "4⚡ 3⛏️ 2🌾",
+            time: "60 seconds"
+        },
+        abilities: [
+            { icon: "🏹", text: "Highest attack power among basic units" },
+            { icon: "🎯", text: "Ranged attacks - can attack without taking damage" },
+            { icon: "⚡", text: "Fast movement speed for tactical positioning" },
+            { icon: "💀", text: "Devastating against unarmored units" }
+        ],
+        strategy: [
+            "Keep them behind infantry for protection",
+            "Use to counter enemy archers and light units",
+            "Essential for raiding and hit-and-run tactics",
+            "Vulnerable to cavalry charges - always protect them"
+        ]
+    },
+    spearmen: {
+        name: "Spearmen",
+        icon: "🔱",
+        lore: "These disciplined warriors wield long spears that can stop charging cavalry in their tracks. Their formation fighting and anti-cavalry training make them the bane of mounted units. Though slower than other infantry, their specialized training and longer reach give them a decisive advantage against cavalry forces.",
+        stats: {
+            attack: 10,
+            defense: "14/10/16/20/18/12",
+            storage: 45,
+            speed: 5,
+            cost: "3⚡ 4⛏️ 2🌾",
+            time: "75 seconds"
+        },
+        abilities: [
+            { icon: "🐎", text: "Anti-cavalry specialists - devastating vs knights" },
+            { icon: "🛡️", text: "Excellent defense against all mounted units" },
+            { icon: "📏", text: "Long reach weapons for formation fighting" },
+            { icon: "⚔️", text: "Strong defensive unit for protecting territory" }
+        ],
+        strategy: [
+            "Essential for defending against cavalry raids",
+            "Place them in front of archers for protection",
+            "Use to counter heavy and royal knights",
+            "Slow speed means they need strategic positioning"
+        ]
+    },
+    heavy_knights: {
+        name: "Heavy Knights",
+        icon: "🐎",
+        lore: "Clad in gleaming armor and mounted on powerful steeds, these elite warriors represent the pinnacle of medieval military technology. Their combination of speed, power, and protection makes them the terror of the battlefield. Though expensive to train and maintain, their ability to break enemy lines and pursue fleeing foes is unmatched.",
+        stats: {
+            attack: 25,
+            defense: "8/6/4/12/8/6",
+            storage: 80,
+            speed: 9,
+            cost: "8⚡ 6⛏️ 4🌾",
+            time: "120 seconds"
+        },
+        abilities: [
+            { icon: "⚡", text: "High speed for rapid deployment and raiding" },
+            { icon: "💪", text: "Powerful attack against infantry and archers" },
+            { icon: "📦", text: "Large storage capacity for carrying loot" },
+            { icon: "🛡️", text: "Armored protection against light attacks" }
+        ],
+        strategy: [
+            "Perfect for raiding enemy territories",
+            "Use to flank and encircle enemy forces",
+            "Excellent for pursuing and destroying retreating units",
+            "Vulnerable to spearmen - avoid direct confrontation"
+        ]
+    },
+    royal_knights: {
+        name: "Royal Knights",
+        icon: "👑",
+        lore: "The finest warriors in the realm, these legendary knights are the embodiment of martial excellence. Trained from birth in the arts of war and mounted on the finest steeds, they inspire both fear and awe. Their presence on the battlefield can turn the tide of any conflict, making them the ultimate symbol of military might.",
+        stats: {
+            attack: 35,
+            defense: "10/8/6/15/20/8",
+            storage: 100,
+            speed: 10,
+            cost: "15⚡ 12⛏️ 8🌾",
+            time: "180 seconds"
+        },
+        abilities: [
+            { icon: "👑", text: "Elite unit with highest combat stats" },
+            { icon: "⚡", text: "Maximum speed for lightning-fast strikes" },
+            { icon: "💎", text: "Premium unit for end-game warfare" },
+            { icon: "📦", text: "Maximum storage capacity for massive raids" }
+        ],
+        strategy: [
+            "Reserve for critical battles and major offensives",
+            "Use to break through heavily defended positions",
+            "Perfect for decisive strikes against enemy capitals",
+            "Extremely expensive - use strategically and protect them"
+        ]
+    },
+    spies: {
+        name: "Spies",
+        icon: "🕵️",
+        lore: "Masters of stealth and deception, these shadowy operatives move unseen through enemy territory. Their ability to gather intelligence and strike from the shadows makes them invaluable for any ruler who wishes to know their enemy's plans. Though they cannot engage in conventional warfare, their information can be worth more than an entire army.",
+        stats: {
+            attack: 0,
+            defense: "2/2/2/2/2/5",
+            storage: 20,
+            speed: 12,
+            cost: "10⚡ 5⛏️ 15🌾",
+            time: "300 seconds"
+        },
+        abilities: [
+            { icon: "👻", text: "Invisible to regular units - only spies can detect them" },
+            { icon: "📊", text: "Gather intelligence on enemy forces and resources" },
+            { icon: "⚡", text: "Fastest unit for rapid reconnaissance" },
+            { icon: "🎭", text: "Can only attack and be attacked by other spies" }
+        ],
+        strategy: [
+            "Essential for gathering enemy intelligence",
+            "Use to scout enemy territories before attacks",
+            "Protect your own spies with counter-espionage",
+            "Cannot participate in regular combat - purely support unit"
+        ]
+    },
+    catapult: {
+        name: "Catapult",
+        icon: "🏰",
+        lore: "These massive siege engines represent the pinnacle of medieval engineering. Capable of hurling massive stones and flaming projectiles, they can reduce even the strongest fortifications to rubble. Though slow and vulnerable in direct combat, their ability to destroy buildings and fortifications makes them essential for any serious military campaign.",
+        stats: {
+            attack: 8,
+            defense: "3/3/3/3/3/1",
+            storage: 60,
+            speed: 2,
+            cost: "20⚡ 25⛏️ 10🌾",
+            time: "600 seconds"
+        },
+        abilities: [
+            { icon: "🏗️", text: "Building destroyer - essential for conquest" },
+            { icon: "💥", text: "Siege weapon - weak in direct combat" },
+            { icon: "🛡️", text: "Must be protected by other units" },
+            { icon: "⏰", text: "Long training time but devastating impact" }
+        ],
+        strategy: [
+            "Essential for late-game conquest and building destruction",
+            "Always protect with infantry and cavalry",
+            "Use in coordinated attacks with other units",
+            "Slow speed requires careful planning and timing"
+        ]
+    },
+    ram: {
+        name: "Ram",
+        icon: "🛡️",
+        lore: "These armored siege engines are designed specifically for breaking through walls and gates. Their reinforced structure allows them to absorb tremendous punishment while delivering devastating blows to fortifications. Though not as versatile as catapults, their ability to breach defenses makes them invaluable for any assault on fortified positions.",
+        stats: {
+            attack: 15,
+            defense: "5/4/6/4/4/2",
+            storage: 70,
+            speed: 3,
+            cost: "18⚡ 20⛏️ 8🌾",
+            time: "480 seconds"
+        },
+        abilities: [
+            { icon: "🚪", text: "Wall-breaker - specialized for breaching defenses" },
+            { icon: "🛡️", text: "Armored construction for survivability" },
+            { icon: "⚔️", text: "Better combat stats than catapults" },
+            { icon: "🎯", text: "Targets fortifications and gates specifically" }
+        ],
+        strategy: [
+            "Use to break through enemy walls and gates",
+            "More combat-effective than catapults",
+            "Essential for assaulting fortified cities",
+            "Protect with supporting units during sieges"
+        ]
+    },
+    hero: {
+        name: "Hero",
+        icon: "🧙",
+        lore: "A legendary warrior whose name will be sung in tales for generations to come. This unique leader possesses extraordinary abilities that can inspire entire armies and turn the tide of battle. Though only one can exist per player, their presence on the battlefield provides powerful bonuses to all allied units, making them the ultimate force multiplier.",
+        stats: {
+            attack: 20,
+            defense: "12/10/14/10/12/8",
+            storage: 50,
+            speed: 8,
+            cost: "50⚡ 40⛏️ 30🌾",
+            time: "900 seconds"
+        },
+        abilities: [
+            { icon: "⭐", text: "Unique unit - only one per player" },
+            { icon: "📈", text: "Gains experience and levels up over time" },
+            { icon: "🎖️", text: "Provides army bonuses and morale boost" },
+            { icon: "⚡", text: "High speed and balanced combat stats" }
+        ],
+        strategy: [
+            "Your most valuable unit - protect at all costs",
+            "Use to lead major offensives and inspire troops",
+            "Gains experience in battle - use regularly",
+            "Provides bonuses to all units in the same army"
+        ]
+    },
+    healer: {
+        name: "Healer",
+        icon: "🧑‍⚕️",
+        lore: "These compassionate warriors carry the knowledge of ancient healing arts, using their skills to mend wounds and restore fallen comrades to the fight. Though they cannot engage in combat themselves, their ability to revive fallen soldiers makes them invaluable for sustaining long campaigns and reducing casualties.",
+        stats: {
+            attack: 0,
+            defense: "8/6/8/5/5/6",
+            storage: 30,
+            speed: 6,
+            cost: "6⚡ 4⛏️ 8🌾",
+            time: "120 seconds"
+        },
+        abilities: [
+            { icon: "💚", text: "Revives 20% of casualties after battle" },
+            { icon: "🛡️", text: "Cannot attack but can defend themselves" },
+            { icon: "⚕️", text: "Support unit - enhances army sustainability" },
+            { icon: "📦", text: "Moderate storage for carrying medical supplies" }
+        ],
+        strategy: [
+            "Include in armies for long campaigns",
+            "Reduces overall casualties and losses",
+            "Cannot fight - always protect with combat units",
+            "Essential for maintaining army strength over time"
+        ]
+    },
+    scout_hawk: {
+        name: "Scout Hawk",
+        icon: "🦅",
+        lore: "These magnificent birds of prey have been trained to serve as the eyes of the army, soaring high above the battlefield to gather intelligence that no ground-based scout could ever obtain. Their ability to fly over enemy lines and bypass all defenses makes them the ultimate reconnaissance tool, providing commanders with crucial information about enemy movements and positions.",
+        stats: {
+            attack: 0,
+            defense: "0/0/0/0/0/0",
+            storage: 15,
+            speed: 15,
+            cost: "8⚡ 3⛏️ 12🌾",
+            time: "90 seconds"
+        },
+        abilities: [
+            { icon: "🦅", text: "Cannot be attacked by any ground unit" },
+            { icon: "👁️", text: "Provides deep reconnaissance capabilities" },
+            { icon: "⚡", text: "Fastest unit for rapid intelligence gathering" },
+            { icon: "🎯", text: "Bypasses all enemy defenses and spies" }
+        ],
+        strategy: [
+            "Use for advanced scouting and intelligence gathering",
+            "Cannot be stopped or intercepted by any unit",
+            "Essential for planning major offensives",
+            "Provides strategic advantage through information superiority"
+        ]
+    }
+};
+
+// Modal functionality
+const modal = document.getElementById("unitModal");
+const modalContent = document.getElementById("modalContent");
+const closeBtn = document.getElementsByClassName("close")[0];
+
+function showUnitModal(unitType) {
+    const unit = unitData[unitType];
+    if (!unit) return;
+    
+    modalContent.innerHTML = `
+        <div class="unit-modal-header">
+            <span class="unit-icon">${unit.icon}</span>
+            <h2>${unit.name}</h2>
+        </div>
+        <div class="unit-modal-body">
+            <div class="unit-lore">
+                ${unit.lore}
+            </div>
+            
+            <div class="unit-stats-grid">
+                <div class="stat-card">
+                    <h4>⚔️ Attack</h4>
+                    <div class="stat-value">${unit.stats.attack}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>🛡️ Defense</h4>
+                    <div class="stat-value">${unit.stats.defense.split('/')[0]}</div>
+                    <div class="defense-breakdown">
+                        <div class="defense-item">
+                            <div class="defense-label">🪖 Inf</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[0]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🏹 Arch</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[1]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🔱 Spear</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[2]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🐎 H.Knight</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[3]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">👑 R.Knight</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[4]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🕵️ Spy</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[5]}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h4>📦 Storage</h4>
+                    <div class="stat-value">${unit.stats.storage}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>🏃 Speed</h4>
+                    <div class="stat-value">${unit.stats.speed}</div>
+                </div>
+            </div>
+            
+            <div class="unit-costs">
+                <div class="cost-item">
+                    <span class="cost-icon">⚡</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[0]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">⛏️</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[1]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">🌾</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[2]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">⏱️</span>
+                    <div class="cost-value">${unit.stats.time}</div>
+                </div>
+            </div>
+            
+            <div class="unit-abilities">
+                <h3>🎯 Special Abilities</h3>
+                ${unit.abilities.map(ability => `
+                    <div class="ability-item">
+                        <span class="ability-icon">${ability.icon}</span>
+                        <span class="ability-text">${ability.text}</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="strategic-advice">
+                <h3>📋 Strategic Advice</h3>
+                <ul>
+                    ${unit.strategy.map(strategy => `<li>${strategy}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = "block";
+}
+
+// Close modal when clicking the X
+closeBtn.onclick = function() {
+    modal.style.display = "none";
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape" && modal.style.display === "block") {
+        modal.style.display = "none";
+    }
+});
+</script>
+{% endblock %} 

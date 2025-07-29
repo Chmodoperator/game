@@ -1,0 +1,183 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .empires-list {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .empire-item {
+        display: inline-block;
+        margin: 2px 5px;
+        padding: 4px 8px;
+        background: #007bff;
+        color: white;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    .warning-box {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid #f39c12;
+    }
+    .form-help {
+        background: #e7f3ff;
+        border-left: 4px solid #007cba;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="empires-list">
+    <h3>Selected Empires ({{ empires|length }})</h3>
+    {% for empire in empires %}
+        <span class="empire-item">{{ empire.name }} ({{ empire.user.username }})</span>
+    {% endfor %}
+</div>
+
+<div class="warning-box">
+    <strong>⚠️ Warning:</strong> This action will modify resources for {{ empires|length }} empire(s). 
+    Please double-check your values before confirming.
+</div>
+
+<div class="form-help">
+    <strong>Instructions:</strong>
+    <ul>
+        <li>Enter amounts to add to current resources, or check "Set absolute values" to replace current amounts</li>
+        <li>All selected empires will receive the same resource changes</li>
+        <li>Resources will automatically be capped at storage limits (except Technology)</li>
+        <li>You must check the confirmation box to proceed</li>
+    </ul>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <fieldset class="module aligned">
+        <h2>Resource Management</h2>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.energy.id_for_label }}">Energy:</label>
+                {{ form.energy }}
+                {% if form.energy.help_text %}<p class="help">{{ form.energy.help_text }}</p>{% endif %}
+                {% if form.energy.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.energy.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.minerals.id_for_label }}">Minerals:</label>
+                {{ form.minerals }}
+                {% if form.minerals.help_text %}<p class="help">{{ form.minerals.help_text }}</p>{% endif %}
+                {% if form.minerals.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.minerals.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.food.id_for_label }}">Food:</label>
+                {{ form.food }}
+                {% if form.food.help_text %}<p class="help">{{ form.food.help_text }}</p>{% endif %}
+                {% if form.food.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.food.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                <label for="{{ form.technology.id_for_label }}">Technology:</label>
+                {{ form.technology }}
+                {% if form.technology.help_text %}<p class="help">{{ form.technology.help_text }}</p>{% endif %}
+                {% if form.technology.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.technology.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                {{ form.set_absolute }}
+                <label for="{{ form.set_absolute.id_for_label }}">{{ form.set_absolute.label }}</label>
+                {% if form.set_absolute.help_text %}<p class="help">{{ form.set_absolute.help_text }}</p>{% endif %}
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div>
+                {{ form.confirm }}
+                <label for="{{ form.confirm.id_for_label }}" style="color: #dc3545; font-weight: bold;">{{ form.confirm.label }}</label>
+                {% if form.confirm.help_text %}<p class="help">{{ form.confirm.help_text }}</p>{% endif %}
+                {% if form.confirm.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.confirm.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </fieldset>
+    
+    <div class="submit-row">
+        <input type="submit" name="apply" value="Apply Changes" class="default" />
+        <a href="{% url 'admin:game_empire_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const setAbsoluteCheckbox = document.getElementById('{{ form.set_absolute.id_for_label }}');
+    const helpTexts = document.querySelectorAll('.help');
+    
+    function updateHelpTexts() {
+        helpTexts.forEach(function(helpText) {
+            if (setAbsoluteCheckbox.checked) {
+                helpText.textContent = helpText.textContent.replace('to add', 'to set as new value');
+            } else {
+                helpText.textContent = helpText.textContent.replace('to set as new value', 'to add');
+            }
+        });
+    }
+    
+    setAbsoluteCheckbox.addEventListener('change', updateHelpTexts);
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Battle Reports{% endblock %}
+
+{% block content %}
+<div class="simple-reports-container">
+    <div class="reports-header">
+        <h1>📊 Battle Reports</h1>
+        <p>Track your military campaigns and battle history</p>
+    </div>
+
+    <!-- Ongoing Attacks Section -->
+    {% if ongoing_attacks %}
+    <div class="section">
+        <div class="section-title">🗡️ Outgoing Attacks ({{ ongoing_attacks.count }})</div>
+        {% for battle in ongoing_attacks %}
+        <div class="battle-item ongoing">
+            <div class="battle-info">
+                <div class="battle-target">
+                    {% if battle.defender %}{{ battle.defender.name }}{% else %}Unoccupied Territory{% endif %}
+                    at ({{ battle.territory.x }}, {{ battle.territory.y }})
+                </div>
+                <div class="battle-status">
+                    {{ battle.get_status_display }} - 
+                    {% if battle.status == 'traveling' %}
+                        Arrives {{ battle.battle_occurs|timeuntil }}
+                    {% elif battle.status == 'returning' %}
+                        Returns {{ battle.armies_return|timeuntil }}
+                    {% else %}
+                        {{ battle.get_status_display }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Incoming Attacks Section -->
+    {% if incoming_attacks %}
+    <div class="section">
+        <div class="section-title">🛡️ Incoming Attacks ({{ incoming_attacks.count }})</div>
+        {% for battle in incoming_attacks %}
+        <div class="battle-item incoming">
+            <div class="battle-info">
+                <div class="battle-target">
+                    {{ battle.attacker.name }} attacking
+                    at ({{ battle.territory.x }}, {{ battle.territory.y }})
+                </div>
+                <div class="battle-status">
+                    {{ battle.get_status_display }} - Arrives {{ battle.battle_occurs|timeuntil }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Battle History Section -->
+    <div class="section">
+        <div class="section-title">📋 Battle History ({{ battles.count }})</div>
+        {% for battle in battles %}
+        <div class="battle-item history" onclick="window.location.href='{% url 'game:battle_report_detail' battle.id %}'">
+            <div class="battle-info">
+                <div class="battle-summary">
+                    {% if battle.attacker == empire %}🗡️ Attack{% else %}🛡️ Defense{% endif %}
+                    vs {% if battle.attacker == empire %}{% if battle.defender %}{{ battle.defender.name }}{% else %}Unoccupied{% endif %}{% else %}{{ battle.attacker.name }}{% endif %}
+                    at ({{ battle.territory.x }}, {{ battle.territory.y }})
+                </div>
+                <div class="battle-result">
+                    {% if battle.result == 'attacker_victory' %}🏆 Victory{% elif battle.result == 'defender_victory' %}🛡️ Defended{% else %}⚡ {{ battle.get_status_display }}{% endif %}
+                    - {{ battle.started_at|date:"M d, H:i" }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+/* Simple Reports Page Styles */
+.simple-reports-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #1a1a1a;
+    border: 1px solid #44ff44;
+    border-radius: 8px;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.reports-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #44ff44;
+}
+
+.reports-header h1 {
+    color: #44ff44;
+    font-size: 1.8rem;
+    margin: 0 0 10px 0;
+}
+
+.reports-header p {
+    color: #aaa;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-weight: bold;
+    color: #44ff44;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(68, 255, 68, 0.3);
+}
+
+.battle-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.battle-item:hover {
+    background: rgba(68, 255, 68, 0.1);
+}
+
+.battle-item.ongoing {
+    border-left: 3px solid #ffaa00;
+    background: rgba(255, 170, 0, 0.05);
+}
+
+.battle-item.incoming {
+    border-left: 3px solid #ff4444;
+    background: rgba(255, 68, 68, 0.05);
+}
+
+.battle-item.history {
+    border-left: 3px solid #44ff44;
+    background: rgba(68, 255, 68, 0.05);
+}
+
+.battle-info {
+    line-height: 1.4;
+}
+
+.battle-target, .battle-summary {
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.battle-status, .battle-result {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,618 @@
+{% extends "base.html" %}
+{% load math_filters %}
+
+{% block title %}{{ research.get_research_type_display }} - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<!-- Hidden CSRF Token for AJAX requests -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<!-- Modern Header -->
+<div class="dashboard-panel" style="margin-bottom: 20px; text-align: center;">
+    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+        <div style="font-size: 48px; margin-right: 15px;">
+            {% if research.research_type == "warfare_tactics" %}⚔️
+            {% elif research.research_type == "fortification_arts" %}🛡️
+            {% elif research.research_type == "resource_alchemy" %}⚗️
+            {% elif research.research_type == "agricultural_mastery" %}🌾
+            {% elif research.research_type == "mining_expertise" %}⛏️
+            {% elif research.research_type == "royal_engineering" %}🏗️
+            {% elif research.research_type == "diplomatic_arts" %}🤝
+            {% else %}📚{% endif %}
+        </div>
+        <div>
+            <h2 style="color: #44ff44; margin: 0; font-size: 24px;">{{ research.get_research_type_display|upper }}</h2>
+            <div style="color: #aaa; font-size: 14px;">Royal Academy Research Division</div>
+        </div>
+    </div>
+</div>
+
+<!-- Research Overview -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ RESEARCH OVERVIEW ]</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <div style="font-family: monospace; font-size: 14px;">
+                <strong>📚 Research:</strong> {{ research.get_research_type_display }}<br>
+                <strong>📊 Current Level:</strong> {{ research.level }}/100<br>
+                <strong>🎯 Status:</strong> 
+                {% if research.research_started and research.research_complete %}
+                    {% now "U" as current_time %}
+                    {% if research.research_complete|date:"U"|add:"0" > current_time|add:"0" %}
+                        <span style="color: #ffaa00;">🔬 RESEARCHING</span>
+                    {% else %}
+                        <span style="color: #44ff44;">✅ READY TO COMPLETE</span>
+                    {% endif %}
+                {% elif research.level >= 100 %}
+                    <span style="color: #ffaa00;">👑 MASTERED</span>
+                {% else %}
+                    <span style="color: #44ff44;">✅ AVAILABLE</span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            {% if research.level > 0 %}
+            <div style="font-family: monospace; font-size: 14px;">
+                <strong>💪 Current Benefits:</strong><br>
+                <span style="color: #44ff44; font-size: 16px; font-weight: bold;">{{ benefits.name }}: {{ benefits.value }}</span><br>
+                <span style="color: #aaa; font-size: 12px;">{{ benefits.description }}</span><br><br>
+                
+                <!-- Current Profit Display -->
+                <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                    <strong style="color: #44ff44;">📈 CURRENT PROFIT:</strong><br>
+                    {% if research.research_type == "warfare_tactics" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:2 }}%</span> Army Attack Power<br>
+                        <span style="color: #ccc; font-size: 11px;">Your armies deal {{ research.level|mul:2 }}% more damage in battle</span>
+                    {% elif research.research_type == "fortification_arts" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:2 }}%</span> Army Defense Power<br>
+                        <span style="color: #ccc; font-size: 11px;">Your armies take {{ research.level|mul:2 }}% less damage when defending</span>
+                    {% elif research.research_type == "resource_alchemy" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">{{ research.level|mul:5 }}%</span> Conversion Efficiency<br>
+                        <span style="color: #ccc; font-size: 11px;">Resource conversion loses only {{ 100|sub:research.level|mul:5 }}% of materials</span>
+                    {% elif research.research_type == "agricultural_mastery" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:3 }}%</span> Food Production<br>
+                        <span style="color: #ccc; font-size: 11px;">All farms produce {{ research.level|mul:3 }}% more food per hour</span>
+                    {% elif research.research_type == "mining_expertise" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:3 }}%</span> Mineral Extraction<br>
+                        <span style="color: #ccc; font-size: 11px;">All mines produce {{ research.level|mul:3 }}% more minerals per hour</span>
+                    {% elif research.research_type == "royal_engineering" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:4 }}%</span> Building Speed<br>
+                        <span style="color: #44ff44; font-size: 18px; font-weight: bold;">-{{ research.level|mul:1 }}%</span> Building Costs<br>
+                        <span style="color: #ccc; font-size: 11px;">Buildings upgrade {{ research.level|mul:4 }}% faster and cost {{ research.level|mul:1 }}% less</span>
+                    {% elif research.research_type == "diplomatic_arts" %}
+                        <span style="color: #ffaa00; font-size: 18px; font-weight: bold;">+{{ research.level|mul:2 }}%</span> Diplomatic Relations<br>
+                        <span style="color: #ccc; font-size: 11px;">Trade deals and alliances are {{ research.level|mul:2 }}% more effective</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div style="font-family: monospace; font-size: 14px; color: #888;">
+                <strong>💡 Potential Benefits:</strong><br>
+                Research this to unlock powerful bonuses!<br><br>
+                <div style="background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa44; padding: 10px; border-radius: 6px;">
+                    <strong style="color: #ffaa44;">🎯 FIRST LEVEL BONUS:</strong><br>
+                    {% if research.research_type == "warfare_tactics" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+2%</span> Army Attack Power
+                    {% elif research.research_type == "fortification_arts" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+2%</span> Army Defense Power
+                    {% elif research.research_type == "resource_alchemy" %}
+                        <span style="color: #ffaa00; font-size: 16px;">5%</span> Conversion Efficiency + Unlock Alchemy Lab
+                    {% elif research.research_type == "agricultural_mastery" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+3%</span> Food Production
+                    {% elif research.research_type == "mining_expertise" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+3%</span> Mineral Extraction
+                    {% elif research.research_type == "royal_engineering" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+4%</span> Building Speed, <span style="color: #44ff44;">-1%</span> Costs
+                    {% elif research.research_type == "diplomatic_arts" %}
+                        <span style="color: #ffaa00; font-size: 16px;">+2%</span> Diplomatic Relations
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Progress Bar (if researching) -->
+{% if research.research_started and research.research_complete %}
+{% now "U" as current_time %}
+{% if research.research_complete|date:"U"|add:"0" > current_time|add:"0" %}
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ RESEARCH PROGRESS ]</h3>
+    <div style="background: #333; border: 1px solid #666; height: 20px; border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+        <div class="research-progress" data-research-id="{{ research.id }}" 
+             data-start-time="{{ research.research_started|date:'U' }}"
+             data-end-time="{{ research.research_complete|date:'U' }}"
+             style="background: linear-gradient(90deg, #44ff44, #66ff66); height: 100%; width: 0%; transition: width 0.3s ease;">
+        </div>
+    </div>
+    <div style="text-align: center; font-family: monospace;">
+        <div style="color: #44ff44; font-size: 14px; font-weight: bold;" id="research-time-{{ research.id }}">
+            Calculating progress...
+        </div>
+        <div style="color: #aaa; font-size: 12px;">
+            Research will complete: {{ research.research_complete|date:"M d, H:i" }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Research Actions -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ RESEARCH ACTIONS ]</h3>
+    {% if research.level >= 100 %}
+        <div style="text-align: center; color: #ffaa00; font-size: 16px; font-weight: bold; padding: 20px;">
+            👑 RESEARCH MASTERED 👑<br>
+            <span style="font-size: 12px; color: #aaa;">This research has reached maximum level (100)</span>
+        </div>
+    {% elif research.research_started and research.research_complete %}
+        {% now "U" as current_time %}
+        {% if research.research_complete|date:"U"|add:"0" > current_time|add:"0" %}
+            <div style="text-align: center; color: #ffaa00; font-size: 16px; font-weight: bold; padding: 20px;">
+                🔬 RESEARCH IN PROGRESS 🔬<br>
+                <span style="font-size: 12px; color: #aaa;">Research will complete automatically when timer reaches zero</span>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 20px;">
+                <button class="form-button complete-research" 
+                        data-research-type="{{ research.research_type }}"
+                        style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44; font-size: 16px; padding: 12px 24px;">
+                    [ COMPLETE RESEARCH → LV.{{ research.level|add:"1" }} ]
+                </button>
+            </div>
+        {% endif %}
+    {% else %}
+        <div style="text-align: center; padding: 20px;">
+            <div style="margin-bottom: 15px; font-family: monospace; font-size: 14px;">
+                <strong>📋 Next Level Cost:</strong><br>
+                <div style="color: #ffaa00; font-size: 16px; font-weight: bold;">
+                    {{ cost.energy }}⚡ {{ cost.minerals }}⛏ {{ cost.food }}🌾
+                </div>
+                <div style="color: #aaa; font-size: 12px; margin-top: 5px;">
+                    Research Time: {% widthratio research.level|add:1 1 30 %} minutes
+                </div>
+            </div>
+            <button class="form-button start-research" 
+                    data-research-type="{{ research.research_type }}"
+                    style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44; font-size: 16px; padding: 12px 24px;">
+                {% if research.level == 0 %}
+                [ BEGIN RESEARCH ]
+                {% else %}
+                [ ADVANCE TO LV.{{ research.level|add:"1" }} ]
+                {% endif %}
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Research Information -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ RESEARCH DETAILS ]</h3>
+    <div style="font-family: monospace; font-size: 13px; line-height: 1.6;">
+        {% if research.research_type == "warfare_tactics" %}
+            <div style="border: 1px solid #ff4444; padding: 15px; background: rgba(255, 68, 68, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #ff4444;">⚔️ WARFARE TACTICS</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Master the ancient arts of war through studying battle formations, siege tactics, and military strategy. 
+                Your generals learn from historical battles and develop new techniques to crush enemies on the battlefield.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +2% Army Attack Power for all military units<br>
+                • Improved siege effectiveness against fortified positions<br>
+                • Unlocks advanced military formations and strategies<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Essential for military expansion and defending your territories. Higher levels make your armies 
+                significantly more effective in both offensive and defensive battles.
+            </div>
+        {% elif research.research_type == "fortification_arts" %}
+            <div style="border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #44ff44;">🛡️ FORTIFICATION ARTS</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Study the construction of mighty castle walls, defensive towers, and strategic fortifications. 
+                Your architects and engineers perfect the art of making your territories impregnable.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +2% Army Defense Power for all military units<br>
+                • Strengthens castle walls and defensive positions<br>
+                • Reduces casualties when defending territories<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Crucial for protecting your empire from enemy attacks. Makes your territories much harder 
+                to conquer and reduces losses when under siege.
+            </div>
+        {% elif research.research_type == "resource_alchemy" %}
+            <div style="border: 1px solid #ffaa44; padding: 15px; background: rgba(255, 170, 68, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #ffaa44;">🔄 RESOURCE ALCHEMY</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Unlock the mystical arts of transmutation, allowing your alchemists to convert one resource 
+                into another. Master the ancient formulas that turn base materials into valuable resources.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +5% Resource Conversion Efficiency<br>
+                • Unlocks resource conversion: Energy ↔ Minerals ↔ Food<br>
+                • Reduces losses during resource transformation<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Game-changing research that provides ultimate resource flexibility. Allows you to adapt 
+                to any situation by converting surplus resources into what you need most.
+            </div>
+        {% elif research.research_type == "agricultural_mastery" %}
+            <div style="border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #44ff44;">🌾 AGRICULTURAL MASTERY</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Develop advanced farming techniques, crop rotation, and livestock breeding. Your farmers 
+                learn to maximize yields and support larger populations through agricultural innovation.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +3% Food Production from all farms<br>
+                • Improved livestock breeding and crop yields<br>
+                • Supports larger populations and armies<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Foundation of a strong empire. More food means larger armies, faster population growth, 
+                and the ability to sustain long military campaigns.
+            </div>
+        {% elif research.research_type == "mining_expertise" %}
+            <div style="border: 1px solid #aaa; padding: 15px; background: rgba(170, 170, 170, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #aaa;">⛏️ MINING EXPERTISE</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Master deep mining techniques, ore refinement, and rare mineral detection. Your miners 
+                learn to extract maximum value from mountain territories and mineral deposits.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +3% Mineral Extraction from all mines<br>
+                • Deep mining and rare ore detection techniques<br>
+                • Unlocks mountain territory bonuses<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Essential for building and upgrading infrastructure. More minerals means faster construction, 
+                better equipment, and the ability to field advanced military units.
+            </div>
+        {% elif research.research_type == "royal_engineering" %}
+            <div style="border: 1px solid #00aaff; padding: 15px; background: rgba(0, 170, 255, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #00aaff;">🏗️ ROYAL ENGINEERING</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Advance the science of construction through innovative building techniques, architectural 
+                marvels, and engineering precision. Your builders become master craftsmen.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +4% Building Construction Speed<br>
+                • -1% Building Upgrade Costs<br>
+                • Enables grand architectural projects<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Accelerates empire development significantly. Faster building upgrades mean quicker 
+                expansion and the ability to respond rapidly to threats and opportunities.
+            </div>
+        {% elif research.research_type == "diplomatic_arts" %}
+            <div style="border: 1px solid #ff44ff; padding: 15px; background: rgba(255, 68, 255, 0.1); margin-bottom: 15px; border-radius: 6px;">
+                <strong style="color: #ff44ff;">🤝 DIPLOMATIC ARTS</strong><br><br>
+                <strong>📜 Description:</strong><br>
+                Master the subtle arts of negotiation, royal protocol, and international relations. 
+                Your diplomats become skilled in forming alliances and avoiding unnecessary conflicts.<br><br>
+                
+                <strong>💪 Benefits Per Level:</strong><br>
+                • +2% Diplomatic Relations bonus<br>
+                • Unlocks royal marriage alliances<br>
+                • Reduces war declaration penalties<br><br>
+                
+                <strong>🎯 Strategic Value:</strong><br>
+                Enables peaceful expansion and powerful alliances. Strong diplomacy can achieve what 
+                armies cannot, opening new trade routes and preventing costly wars.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resource Conversion Laboratory (only show for Resource Alchemy level > 0) -->
+{% if research.research_type == "resource_alchemy" and research.level > 0 %}
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ ⚗️ ALCHEMICAL LABORATORY ]</h3>
+    
+    <!-- Efficiency Display -->
+    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-bottom: 20px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 18px; color: #ffaa44; font-weight: bold; margin-bottom: 5px;">
+            🔬 CONVERSION EFFICIENCY: {{ research.level|mul:5 }}%
+        </div>
+        <div style="font-size: 12px; color: #aaa;">
+            {% with loss_rate=research.level|mul:5 %}
+            Resource conversion loses {{ 100|sub:loss_rate }}% of materials • Higher research levels reduce losses
+            {% endwith %}
+        </div>
+    </div>
+    
+    <!-- Current Resources Display -->
+    <div style="background: rgba(0, 0, 0, 0.3); border: 1px solid #333; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+        <h4 style="color: #44ff44; margin: 0 0 10px 0; text-align: center;">📊 CURRENT RESOURCES</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+            <div style="border: 1px solid #ffaa00; padding: 10px; background: rgba(255, 170, 0, 0.1); border-radius: 4px;">
+                <div style="font-size: 24px;">⚡</div>
+                <div style="color: #ffaa00; font-weight: bold; font-size: 18px;" id="current-energy">{{ empire.energy|floatformat:"0" }}</div>
+                <div style="color: #aaa; font-size: 11px;">Energy</div>
+            </div>
+            <div style="border: 1px solid #aaa; padding: 10px; background: rgba(170, 170, 170, 0.1); border-radius: 4px;">
+                <div style="font-size: 24px;">⛏</div>
+                <div style="color: #aaa; font-weight: bold; font-size: 18px;" id="current-minerals">{{ empire.minerals|floatformat:"0" }}</div>
+                <div style="color: #aaa; font-size: 11px;">Minerals</div>
+            </div>
+            <div style="border: 1px solid #44ff44; padding: 10px; background: rgba(68, 255, 68, 0.1); border-radius: 4px;">
+                <div style="font-size: 24px;">🌾</div>
+                <div style="color: #44ff44; font-weight: bold; font-size: 18px;" id="current-food">{{ empire.food|floatformat:"0" }}</div>
+                <div style="color: #aaa; font-size: 11px;">Food</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Conversion Interface -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+        <!-- Energy Conversion -->
+        <div style="text-align: center; border: 1px solid #ffaa00; padding: 15px; background: rgba(255, 170, 0, 0.05); border-radius: 6px;">
+            <h4 style="color: #ffaa00; margin: 0 0 15px 0;">⚡ ENERGY</h4>
+            <input type="number" id="energy-convert" placeholder="Amount" min="1" 
+                   style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px; text-align: center;">
+            <div style="display: flex; gap: 8px;">
+                <button class="convert-btn" data-from="energy" data-to="minerals" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #aaa; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → ⛏️
+                </button>
+                <button class="convert-btn" data-from="energy" data-to="food" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → 🌾
+                </button>
+            </div>
+        </div>
+        
+        <!-- Minerals Conversion -->
+        <div style="text-align: center; border: 1px solid #aaa; padding: 15px; background: rgba(170, 170, 170, 0.05); border-radius: 6px;">
+            <h4 style="color: #aaa; margin: 0 0 15px 0;">⛏️ MINERALS</h4>
+            <input type="number" id="minerals-convert" placeholder="Amount" min="1"
+                   style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px; text-align: center;">
+            <div style="display: flex; gap: 8px;">
+                <button class="convert-btn" data-from="minerals" data-to="energy" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #ffaa00; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → ⚡
+                </button>
+                <button class="convert-btn" data-from="minerals" data-to="food" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → 🌾
+                </button>
+            </div>
+        </div>
+        
+        <!-- Food Conversion -->
+        <div style="text-align: center; border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.05); border-radius: 6px;">
+            <h4 style="color: #44ff44; margin: 0 0 15px 0;">🌾 FOOD</h4>
+            <input type="number" id="food-convert" placeholder="Amount" min="1"
+                   style="width: 100%; padding: 8px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 3px; margin-bottom: 10px; text-align: center;">
+            <div style="display: flex; gap: 8px;">
+                <button class="convert-btn" data-from="food" data-to="energy" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #ffaa00; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → ⚡
+                </button>
+                <button class="convert-btn" data-from="food" data-to="minerals" 
+                        style="flex: 1; padding: 8px; font-size: 11px; background: #aaa; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                    → ⛏️
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Conversion Tips -->
+    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-top: 20px; border-radius: 6px;">
+        <h4 style="color: #ffaa44; margin: 0 0 10px 0;">💡 ALCHEMY TIPS</h4>
+        <div style="font-size: 12px; color: #ccc; line-height: 1.5;">
+            • Higher research levels reduce conversion losses<br>
+            • Check storage capacity before converting large amounts<br>
+            • Convert surplus resources to what you need most<br>
+            • Efficiency caps at 95% (Level 19+ research)
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Research Tree Preview -->
+<div class="dashboard-panel">
+    <h3>[ RESEARCH PROGRESSION ]</h3>
+    <div style="font-family: monospace; font-size: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; text-align: center;">
+            {% for level in "12345"|make_list %}
+                <div style="border: 1px solid {% if research.level >= level|add:0 %}#44ff44{% else %}#333{% endif %}; padding: 8px; background: {% if research.level >= level|add:0 %}rgba(68,255,68,0.1){% else %}rgba(0,0,0,0.3){% endif %}; border-radius: 4px;">
+                    <strong>Lv.{{ level }}</strong><br>
+                    {% if research.level >= level|add:0 %}
+                        <span style="color: #44ff44;">✅</span>
+                    {% else %}
+                        <span style="color: #666;">⏳</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div style="text-align: center; margin-top: 15px; color: #aaa;">
+            Research continues up to Level 100 with increasing benefits and costs
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle research start button
+    document.querySelectorAll('.start-research').forEach(button => {
+        button.addEventListener('click', async function() {
+            const researchType = this.dataset.researchType;
+            
+            const response = await fetch('/game/api/research/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    research_type: researchType
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Handle research completion button
+    document.querySelectorAll('.complete-research').forEach(button => {
+        button.addEventListener('click', async function() {
+            const researchType = this.dataset.researchType;
+            
+            const response = await fetch('/game/api/research/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    research_type: researchType
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Handle resource conversion
+    document.querySelectorAll('.convert-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const fromResource = this.dataset.from;
+            const toResource = this.dataset.to;
+            const amount = parseInt(document.getElementById(fromResource + '-convert').value);
+            
+            if (!amount || amount <= 0) {
+                NovaGame.showNotification('Please enter a valid amount to convert!', 'error');
+                return;
+            }
+            
+            // Show confirmation with efficiency calculation
+            const efficiency = {{ research.level|mul:5|default:0 }};
+            const converted = Math.floor(amount * (efficiency / 100));
+            const lost = amount - converted;
+            
+            if (!confirm(`Convert ${amount.toLocaleString()} ${fromResource} → ${converted.toLocaleString()} ${toResource}?\n\nEfficiency: ${efficiency}%\nLoss: ${lost.toLocaleString()} ${fromResource}`)) {
+                return;
+            }
+            
+            const response = await fetch('/game/api/convert-resources/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    from_resource: fromResource,
+                    to_resource: toResource,
+                    amount: amount
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                
+                // Update resource displays
+                if (result.new_resources) {
+                    document.getElementById('current-energy').textContent = result.new_resources.energy.toLocaleString();
+                    document.getElementById('current-minerals').textContent = result.new_resources.minerals.toLocaleString();
+                    document.getElementById('current-food').textContent = result.new_resources.food.toLocaleString();
+                    
+                    // Update header resources if they exist
+                    const headerEnergy = document.getElementById('header-energy');
+                    const headerMinerals = document.getElementById('header-minerals');
+                    const headerFood = document.getElementById('header-food');
+                    
+                    if (headerEnergy) headerEnergy.textContent = result.new_resources.energy.toLocaleString();
+                    if (headerMinerals) headerMinerals.textContent = result.new_resources.minerals.toLocaleString();
+                    if (headerFood) headerFood.textContent = result.new_resources.food.toLocaleString();
+                }
+                
+                // Clear the input field
+                document.getElementById(fromResource + '-convert').value = '';
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Progress bar animation
+    function updateResearchProgress() {
+        document.querySelectorAll('.research-progress').forEach(progressBar => {
+            const researchId = progressBar.dataset.researchId;
+            const startTime = parseInt(progressBar.dataset.startTime);
+            const endTime = parseInt(progressBar.dataset.endTime);
+            const timeDisplay = document.getElementById(`research-time-${researchId}`);
+            
+            if (startTime && endTime && timeDisplay) {
+                const now = Math.floor(Date.now() / 1000);
+                const totalTime = endTime - startTime;
+                const elapsed = now - startTime;
+                const remaining = endTime - now;
+                
+                if (remaining > 0) {
+                    const progress = Math.min(100, (elapsed / totalTime) * 100);
+                    progressBar.style.width = progress + '%';
+                    
+                    // Format time remaining
+                    const hours = Math.floor(remaining / 3600);
+                    const minutes = Math.floor((remaining % 3600) / 60);
+                    const seconds = remaining % 60;
+                    
+                    let timeString = '';
+                    if (hours > 0) {
+                        timeString = `${hours}h ${minutes}m ${seconds}s remaining`;
+                    } else if (minutes > 0) {
+                        timeString = `${minutes}m ${seconds}s remaining`;
+                    } else {
+                        timeString = `${seconds}s remaining`;
+                    }
+                    
+                    timeDisplay.textContent = `${progress.toFixed(1)}% - ${timeString}`;
+                } else {
+                    progressBar.style.width = '100%';
+                    timeDisplay.textContent = 'Research Complete! Refresh to finish.';
+                    timeDisplay.style.color = '#44ff44';
+                }
+            }
+        });
+    }
+    
+    // Update progress every second
+    updateResearchProgress();
+    setInterval(updateResearchProgress, 1000);
+});
+</script>
+
+<style>
+.research-progress {
+    animation: progress-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes progress-glow {
+    from {
+        box-shadow: 0 0 5px rgba(68, 255, 68, 0.5);
+    }
+    to {
+        box-shadow: 0 0 15px rgba(68, 255, 68, 0.8);
+    }
+}
+</style>
+{% endblock %} 

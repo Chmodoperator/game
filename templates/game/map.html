@@ -1,0 +1,847 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}World Map - {{ empire.name }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<!-- Map Header -->
+<div style="text-align: center; margin-bottom: 15px; background: linear-gradient(145deg, #2a1a0a, #1a0a0a); border: 2px solid #ffaa00; border-radius: 10px; padding: 12px;">
+    <h1 style="color: #ffaa00; font-size: 20px; margin: 0;">🗺️ KINGDOM MAP</h1>
+    <p style="color: #aaa; font-size: 12px; margin: 5px 0 0 0;">Complete World View (50x50)</p>
+</div>
+
+<!-- Full World Map Container -->
+<div style="background: #1a1a1a; border: 3px solid #333; border-radius: 10px; padding: 10px; margin-bottom: 15px; position: relative; overflow: auto;">
+    <!-- Coordinate Labels Top -->
+    <div style="display: flex; justify-content: center; margin-bottom: 5px;">
+        <div style="display: grid; grid-template-columns: repeat(50, 16px); gap: 1px; font-size: 8px; color: #666;">
+            {% for i in "0123456789012345678901234567890123456789012345678" %}
+            <div style="text-align: center; font-weight: bold;">{{ forloop.counter0 }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center;">
+        <!-- Y-axis labels -->
+        <div style="display: flex; flex-direction: column; gap: 1px; margin-right: 5px; font-size: 8px; color: #666;">
+            {% for i in "0123456789012345678901234567890123456789012345678" %}
+            <div style="height: 16px; display: flex; align-items: center; font-weight: bold;">{{ forloop.counter0 }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Full World Grid -->
+        <div class="world-map" style="display: grid; grid-template-columns: repeat(50, 16px); grid-template-rows: repeat(50, 16px); gap: 1px; background: #0a0a0a; padding: 5px; border-radius: 8px;">
+            {% for row in map_data %}
+                {% for territory in row %}
+                <div class="village-tile" 
+                     data-x="{{ territory.x }}" 
+                     data-y="{{ territory.y }}"
+                     data-owner="{% if territory.owner %}{{ territory.owner.name }}{% else %}Empty{% endif %}"
+                     data-terrain="{{ territory.get_terrain_type_display }}"
+                     onclick="selectVillage({{ territory.x }}, {{ territory.y }})"
+                     title="({{ territory.x }}|{{ territory.y }}) {% if territory.owner %}{{ territory.owner.name }}{% else %}{{ territory.get_terrain_type_display }}{% endif %}"
+                     style="
+                        width: 16px; 
+                        height: 16px; 
+                        border: 1px solid #333; 
+                        border-radius: 2px; 
+                        cursor: pointer; 
+                        position: relative;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        overflow: hidden;
+                        {% if territory.owner %}
+                            {% if territory.owner == empire %}
+                                background: linear-gradient(145deg, #2a4a2a, #1a3a1a);
+                                border: 2px solid #44ff44;
+                                box-shadow: 0 0 6px rgba(68, 255, 68, 0.8);
+                                animation: playerPulse 2s ease-in-out infinite;
+                            {% else %}
+                                background: linear-gradient(145deg, #4a2a2a, #3a1a1a);
+                                border-color: #ff4444;
+                                box-shadow: 0 0 3px rgba(255, 68, 68, 0.5);
+                            {% endif %}
+                        {% else %}
+                            {% comment %} Empty territory - color by terrain type {% endcomment %}
+                            {% if territory.terrain_type == 'mountains' %}
+                                background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+                                border-color: #888;
+                                box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+                            {% elif territory.terrain_type == 'desert' %}
+                                background: linear-gradient(145deg, #4a3a2a, #3a2a1a);
+                                border-color: #aa8844;
+                                box-shadow: 0 0 2px rgba(255, 200, 0, 0.4);
+                            {% elif territory.terrain_type == 'forest' %}
+                                background: linear-gradient(145deg, #2a3a2a, #1a2a1a);
+                                border-color: #44aa44;
+                                box-shadow: 0 0 2px rgba(0, 255, 0, 0.3);
+                            {% elif territory.terrain_type == 'water' %}
+                                background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+                                border-color: #4488aa;
+                                box-shadow: 0 0 2px rgba(0, 100, 255, 0.4);
+                            {% elif territory.terrain_type == 'volcanic' %}
+                                background: linear-gradient(145deg, #4a2a2a, #3a1a1a);
+                                border-color: #aa4444;
+                                box-shadow: 0 0 2px rgba(255, 50, 50, 0.5);
+                            {% else %}
+                                background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+                                border-color: #666;
+                            {% endif %}
+                        {% endif %}
+                    ">
+                    <!-- Village Icon/Symbol -->
+                    <div style="font-size: 10px; text-shadow: 1px 1px 1px #000; z-index: 2;">
+                        {% if territory.owner %}
+                            {% if territory.owner == empire %}
+                                🏰
+                            {% else %}
+                                🏘️
+                            {% endif %}
+                        {% else %}
+                            <!-- Empty territory - show terrain type -->
+                            {% if territory.terrain_type == 'plains' %}🌾
+                            {% elif territory.terrain_type == 'mountains' %}⛰️
+                            {% elif territory.terrain_type == 'desert' %}🏜️
+                            {% elif territory.terrain_type == 'forest' %}🌲
+                            {% elif territory.terrain_type == 'water' %}🌊
+                            {% elif territory.terrain_type == 'volcanic' %}🌋
+                            {% else %}🌾
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Terrain Background Pattern -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; opacity: 0.4;
+                        {% if territory.terrain_type == 'mountains' %}
+                            background: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.2) 2px, rgba(255,255,255,0.2) 3px);
+                        {% elif territory.terrain_type == 'water' %}
+                            background: repeating-linear-gradient(90deg, rgba(0,100,255,0.3), rgba(0,100,255,0.3) 1px, transparent 1px, transparent 2px);
+                        {% elif territory.terrain_type == 'forest' %}
+                            background: radial-gradient(circle at 30% 30%, rgba(0,255,0,0.3) 20%, transparent 50%);
+                        {% elif territory.terrain_type == 'desert' %}
+                            background: repeating-linear-gradient(30deg, rgba(255,200,0,0.3) 0px, rgba(255,200,0,0.3) 1px, transparent 1px, transparent 2px);
+                        {% elif territory.terrain_type == 'volcanic' %}
+                            background: radial-gradient(circle at 50% 50%, rgba(255,50,50,0.4) 30%, transparent 70%);
+                        {% endif %}
+                    "></div>
+                    
+                    <!-- Population/Level Indicator -->
+                    {% if territory.owner %}
+                    <div style="position: absolute; bottom: 0px; right: 0px; background: rgba(0,0,0,0.8); color: #fff; font-size: 6px; padding: 0px 1px; border-radius: 1px; z-index: 3; line-height: 1;">
+                        {{ territory.buildings.count|default:"0" }}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Owner Name (on hover) -->
+                    {% if territory.owner %}
+                    <div class="owner-tooltip" style="position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: {% if territory.owner == empire %}#44ff44{% else %}#ff4444{% endif %}; font-size: 8px; padding: 2px 4px; border-radius: 2px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10;">
+                        {{ territory.owner.name|truncatechars:8 }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Selected Village Information -->
+<div id="village-info" style="background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 2px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; display: none;">
+    <h3 style="margin: 0 0 10px 0; color: #ffaa00; text-align: center;">🏘️ Village Information</h3>
+    <div id="village-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-family: monospace; font-size: 12px;">
+        <!-- Will be populated by JavaScript -->
+    </div>
+    
+    <!-- Action Buttons -->
+    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+        <button id="attack-btn" onclick="attackVillage()" disabled style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border: 2px solid #ff4444; color: #ff4444; padding: 8px 15px; border-radius: 6px; cursor: pointer; opacity: 0.5; font-weight: bold;">
+            ⚔️ ATTACK
+        </button>
+        <button id="message-btn" onclick="messagePlayer()" disabled style="background: linear-gradient(145deg, #2a2a4a, #1a1a3a); border: 2px solid #00aaff; color: #00aaff; padding: 8px 15px; border-radius: 6px; cursor: pointer; opacity: 0.5; font-weight: bold;">
+            💌 MESSAGE
+        </button>
+        <button id="explore-btn" onclick="exploreVillage()" disabled style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 2px solid #44ff44; color: #44ff44; padding: 8px 15px; border-radius: 6px; cursor: pointer; opacity: 0.5; font-weight: bold;">
+            🔍 EXPLORE
+        </button>
+        <button onclick="closeVillageInfo()" style="background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border: 2px solid #666; color: #aaa; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            ✖️ CLOSE
+        </button>
+    </div>
+</div>
+
+<!-- Village Popup Modal -->
+<div id="village-popup" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 3px solid #ffaa00; border-radius: 15px; padding: 25px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="popup-title" style="color: #ffaa00; margin: 0; font-size: 20px;">🏘️ Village Details</h2>
+            <button onclick="closeVillagePopup()" style="background: #ff4444; border: none; color: white; padding: 8px 12px; border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 16px;">✖</button>
+        </div>
+        
+        <div id="popup-content" style="font-family: monospace;">
+            <!-- Will be populated by JavaScript -->
+        </div>
+        
+        <div id="popup-actions" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+            <!-- Action buttons will be added by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Attack Modal -->
+<div id="attack-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; z-index: 1001; justify-content: center; align-items: center;">
+    <div style="background: linear-gradient(145deg, #2a1a1a, #1a1a1a); border: 3px solid #ff4444; border-radius: 15px; padding: 25px; max-width: 800px; width: 90%; max-height: 80%; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="color: #ff4444; margin: 0; font-size: 20px;">💰 Launch Raid</h2>
+            <button onclick="closeAttackModal()" style="background: #ff4444; border: none; color: white; padding: 8px 12px; border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 16px;">✖</button>
+        </div>
+        
+        <div id="attack-target-info" style="background: rgba(255,68,68,0.1); border: 1px solid #ff4444; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <!-- Target info will be populated by JavaScript -->
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #ffaa00; margin-bottom: 10px;">🏗️ Select Your Attack Forces</h4>
+            <div style="background: rgba(255,255,255,0.05); border: 1px solid #666; border-radius: 8px; padding: 15px; font-family: monospace;">
+                <table style="width: 100%; border-collapse: collapse; color: #fff;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #666;">
+                            <th style="text-align: left; padding: 8px; color: #ffaa00;">Unit Type</th>
+                            <th style="text-align: center; padding: 8px; color: #ffaa00;">Available</th>
+                            <th style="text-align: center; padding: 8px; color: #ffaa00;">Send</th>
+                            <th style="text-align: center; padding: 8px; color: #ffaa00;">Combat Power</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attack-unit-table">
+                        <!-- Unit rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+                
+                <div style="margin-top: 15px; padding: 10px; background: rgba(68,255,68,0.1); border: 1px solid #44ff44; border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #44ff44; font-weight: bold;">Total Attack Force:</span>
+                        <span id="total-attack-power" style="color: #44ff44; font-weight: bold;">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+            <button onclick="launchAttackWithUnits()" style="background: linear-gradient(145deg, #ff4444, #ff6666); border: none; color: white; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer;" id="launch-attack-btn">
+                💰 LAUNCH RAID
+            </button>
+            <button onclick="closeAttackModal()" style="background: linear-gradient(145deg, #666, #888); border: none; color: white; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                ✖️ CANCEL
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Map Legend -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+    <!-- Village Types -->
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 12px;">
+        <h4 style="margin: 0 0 8px 0; color: #44ff44; font-size: 14px;">🏘️ Territory Status</h4>
+        <div style="font-family: monospace; line-height: 1.6; font-size: 11px;">
+            <div style="color: #44ff44;">🏰 Your Empire (Green)</div>
+            <div style="color: #ff4444;">🏘️ Other Empires (Red)</div>
+            <div style="color: #aaa;">📍 Empty Territories (Colored by terrain)</div>
+        </div>
+    </div>
+    
+    <!-- Terrain Types -->
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 12px;">
+        <h4 style="margin: 0 0 8px 0; color: #ffaa00; font-size: 14px;">🌍 Empty Territory Colors</h4>
+        <div style="font-family: monospace; line-height: 1.6; font-size: 11px;">
+            <div style="color: #666;">🌾 Plains - Gray (2,400)</div>
+            <div style="color: #888;">⛰️ Mountains - Light Gray (20)</div>
+            <div style="color: #aa8844;">🏜️ Desert - Brown/Gold (20)</div>
+            <div style="color: #44aa44;">🌲 Forest - Green (20)</div>
+            <div style="color: #4488aa;">🌊 Water - Blue (20)</div>
+            <div style="color: #aa4444;">🌋 Volcanic - Red (20)</div>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 12px;">
+        <h4 style="margin: 0 0 8px 0; color: #00aaff; font-size: 14px;">🎮 Controls</h4>
+        <div style="font-family: monospace; line-height: 1.6; font-size: 11px;">
+            <div>🖱️ Click to select village</div>
+            <div>🔍 Hover for quick info</div>
+            <div>⚔️ Attack/Explore actions</div>
+            <div>📍 Full world visible</div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 12px;">
+        <h4 style="margin: 0 0 8px 0; color: #aaa; font-size: 14px;">📊 Your Kingdom</h4>
+        <div style="font-family: monospace; line-height: 1.6; font-size: 11px;">
+            <div>Territory: <span style="color: #44ff44;">({{ empire.territories.first.x }}, {{ empire.territories.first.y }})</span></div>
+            <div>Population: <span style="color: #ffaa00;">{{ empire.population|floatformat:0 }}</span></div>
+            <div>Power: <span style="color: #ff4444;">{{ empire.power_level }}</span></div>
+            <div>Rank: <span style="color: #00aaff;">#{{ empire.rank|default:"∞" }}</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedX = null;
+let selectedY = null;
+
+function selectVillage(x, y) {
+    selectedX = x;
+    selectedY = y;
+    
+    // Show detailed popup instead of simple info panel
+    showVillagePopup(x, y);
+}
+
+function showVillagePopup(x, y) {
+    const tile = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+    const owner = tile ? tile.dataset.owner : 'Unknown';
+    const terrain = tile ? tile.dataset.terrain : 'Unknown';
+    
+    const popup = document.getElementById('village-popup');
+    const title = document.getElementById('popup-title');
+    const content = document.getElementById('popup-content');
+    const actions = document.getElementById('popup-actions');
+    
+    // Set title based on ownership
+    if (owner === 'Empty') {
+        title.innerHTML = `🌍 ${terrain} Territory`;
+    } else if (owner === '{{ empire.name }}') {
+        title.innerHTML = `🏰 Your Village`;
+    } else {
+        title.innerHTML = `🏘️ ${owner}'s Village`;
+    }
+    
+    // Show loading content
+    content.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div style="color: #44ff44; font-size: 16px; margin-bottom: 10px;">📍 Loading village data...</div>
+            <div style="color: #aaa;">Coordinates: (${x}|${y})</div>
+            <div style="color: #aaa;">Terrain: ${terrain}</div>
+            <div style="color: #aaa;">Owner: ${owner}</div>
+        </div>
+    `;
+    
+    // Clear previous actions
+    actions.innerHTML = '';
+    
+    // Show popup
+    popup.style.display = 'flex';
+    
+    // Fetch detailed village data
+    fetch('/game/api/territory-info/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ x: x, y: y })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateVillagePopup(data);
+        } else {
+            content.innerHTML = `<div style="color: #ff4444; text-align: center;">Error loading village data</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        content.innerHTML = `<div style="color: #ff4444; text-align: center;">Failed to load village information</div>`;
+    });
+}
+
+function updateVillagePopup(data) {
+    const content = document.getElementById('popup-content');
+    const actions = document.getElementById('popup-actions');
+    const territory = data.territory;
+    
+    let buildingsText = 'None';
+    let populationText = '0';
+    if (data.buildings && data.buildings.length > 0) {
+        buildingsText = data.buildings.map(building => 
+            `<div style="margin: 2px 0; padding: 4px; background: rgba(68,255,68,0.1); border-radius: 3px;">
+                🏛️ ${building.type} Lv.${building.level}
+            </div>`
+        ).join('');
+        populationText = data.buildings.length * 50; // Estimate population
+    }
+    
+    let armiesText = 'No military forces visible';
+    if (data.armies && data.armies.length > 0) {
+        armiesText = data.armies.map(army => 
+            `<div style="margin: 2px 0; padding: 4px; background: rgba(255,68,68,0.1); border-radius: 3px;">
+                ⚔️ ${army.type}: ${army.size} units (Exp: ${army.experience})
+            </div>`
+        ).join('');
+    }
+    
+    let monstersText = '';
+    if (data.monsters && data.monsters.length > 0) {
+        monstersText = `
+            <div style="margin-top: 15px;">
+                <strong style="color: #ff4444;">👹 Wild Creatures:</strong>
+                <div style="margin-top: 5px;">
+                    ${data.monsters.map(monster => 
+                        `<div style="margin: 2px 0; padding: 4px; background: rgba(255,68,68,0.1); border-radius: 3px;">
+                            ${monster.type} Lv.${monster.level} (${monster.total_size} creatures)
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    let distanceText = 'Unknown';
+    if (data.distance_info) {
+        distanceText = `${data.distance_info.distance} fields (${data.distance_info.travel_time}min travel)`;
+    }
+    
+    // Build content
+    content.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 13px;">
+            <div>
+                <strong style="color: #44ff44; font-size: 14px;">📍 Location Info</strong>
+                <div style="margin: 10px 0; line-height: 1.6;">
+                    <div>Coordinates: <span style="color: #ffaa00;">(${territory.x}|${territory.y})</span></div>
+                    <div>Terrain: <span style="color: #ffaa00;">${territory.terrain_type}</span></div>
+                    <div>Owner: <span style="color: ${territory.owner_color};">${territory.owner}</span></div>
+                    <div>Distance: <span style="color: #00aaff;">${distanceText}</span></div>
+                </div>
+                
+                <strong style="color: #44ff44; font-size: 14px;">🏛️ Buildings</strong>
+                <div style="margin: 10px 0;">
+                    ${buildingsText}
+                </div>
+            </div>
+            
+            <div>
+                <strong style="color: #44ff44; font-size: 14px;">👥 Population</strong>
+                <div style="margin: 10px 0;">
+                    <div style="color: #ffaa00; font-size: 16px; font-weight: bold;">${populationText} inhabitants</div>
+                </div>
+                
+                <strong style="color: #44ff44; font-size: 14px;">⚔️ Military</strong>
+                <div style="margin: 10px 0;">
+                    ${armiesText}
+                </div>
+                
+                <strong style="color: #44ff44; font-size: 14px;">🛡️ Defense</strong>
+                <div style="margin: 10px 0;">
+                    <div>Bonus: <span style="color: #ffaa00;">+${territory.defense_bonus}</span></div>
+                </div>
+            </div>
+        </div>
+        ${monstersText}
+    `;
+    
+    // Add action buttons based on ownership
+    actions.innerHTML = '';
+    
+    if (territory.owner === 'Unclaimed') {
+        actions.innerHTML = `
+            <button onclick="exploreTerritory(${territory.x}, ${territory.y})" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 2px solid #44ff44; color: #44ff44; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                🔍 EXPLORE
+            </button>
+        `;
+    } else if (territory.owner === '{{ empire.name }}') {
+        actions.innerHTML = `
+            <button onclick="manageVillage(${territory.x}, ${territory.y})" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 2px solid #44ff44; color: #44ff44; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                🏰 MANAGE
+            </button>
+        `;
+    } else {
+        actions.innerHTML = `
+            <button onclick="attackVillage()" style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border: 2px solid #ff4444; color: #ff4444; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                💰 RAID
+            </button>
+            <button onclick="messagePlayer()" style="background: linear-gradient(145deg, #2a2a4a, #1a1a3a); border: 2px solid #00aaff; color: #00aaff; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                💌 MESSAGE
+            </button>
+        `;
+    }
+}
+
+function closeVillagePopup() {
+    document.getElementById('village-popup').style.display = 'none';
+    selectedX = null;
+    selectedY = null;
+}
+
+function messagePlayer() {
+    if (selectedX === null) return;
+    // TODO: Implement messaging system
+    alert(`Messaging feature coming soon! Target: (${selectedX}|${selectedY})`);
+}
+
+function manageVillage(x, y) {
+    if (x === null || y === null) return;
+    // Redirect to village management
+    window.location.href = `/game/territory/${x}/${y}/`;
+}
+
+function exploreTerritory(x, y) {
+    if (x === null || y === null) return;
+    
+    // Close the popup and redirect to territory page for detailed exploration
+    closeVillagePopup();
+    window.location.href = `/game/territory/${x}/${y}/`;
+}
+
+function attackVillage() {
+    if (selectedX === null) return;
+    
+    // Show raid modal instead of redirecting  
+    showAttackModal();
+}
+
+function showAttackModal() {
+    const modal = document.getElementById('attack-modal');
+    const targetInfo = document.getElementById('attack-target-info');
+    const unitTable = document.getElementById('attack-unit-table');
+    
+    // Get target information
+    const tile = document.querySelector(`[data-x="${selectedX}"][data-y="${selectedY}"]`);
+    const owner = tile ? tile.dataset.owner : 'Unknown';
+    const terrain = tile ? tile.dataset.terrain : 'Unknown';
+    
+    // Set target info
+    targetInfo.innerHTML = `
+        <h4 style="color: #ff4444; margin: 0 0 10px 0;">🎯 Raid Target</h4>
+        <div style="color: #ccc;">
+            <strong>Location:</strong> (${selectedX}|${selectedY})<br>
+            <strong>Terrain:</strong> ${terrain}<br>
+            <strong>Owner:</strong> ${owner}
+        </div>
+    `;
+    
+    // Load available armies
+    unitTable.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #ffaa00;">Loading your armies...</td></tr>';
+    
+    fetch('/game/api/get-armies/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.armies.length > 0) {
+            displayAttackTable(data.armies);
+        } else {
+            unitTable.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #ff4444;">No armies available for attack!</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading armies:', error);
+        unitTable.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #ff4444;">Error loading armies</td></tr>';
+    });
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+function displayAttackTable(armies) {
+    const unitTable = document.getElementById('attack-unit-table');
+    
+    // Group armies by unit type and sum their sizes
+    const unitGroups = {};
+    armies.forEach(army => {
+        if (!unitGroups[army.unit_type]) {
+            unitGroups[army.unit_type] = {
+                total_size: 0,
+                total_combat: 0,
+                armies: []
+            };
+        }
+        unitGroups[army.unit_type].total_size += army.size;
+        unitGroups[army.unit_type].total_combat += army.combat_strength;
+        unitGroups[army.unit_type].armies.push(army);
+    });
+    
+    // Create table rows
+    let html = '';
+    Object.keys(unitGroups).forEach(unitType => {
+        const group = unitGroups[unitType];
+        const displayName = unitType.charAt(0).toUpperCase() + unitType.slice(1).replace('_', ' ');
+        
+        html += `
+            <tr style="border-bottom: 1px solid #333;">
+                <td style="padding: 10px; font-weight: bold;">${displayName}</td>
+                <td style="padding: 10px; text-align: center; color: #44ff44;">${group.total_size.toLocaleString()}</td>
+                <td style="padding: 10px; text-align: center;">
+                    <input type="number" 
+                           id="send-${unitType}" 
+                           min="0" 
+                           max="${group.total_size}" 
+                           value="0" 
+                           style="width: 80px; padding: 5px; background: #333; border: 1px solid #666; color: #fff; text-align: center; border-radius: 4px;"
+                           oninput="updateAttackPower()"
+                           data-unit-type="${unitType}"
+                           data-max-units="${group.total_size}"
+                           data-combat-per-unit="${(group.total_combat / group.total_size).toFixed(1)}">
+                </td>
+                <td style="padding: 10px; text-align: center; color: #ff4444;" id="combat-${unitType}">0</td>
+            </tr>
+        `;
+    });
+    
+    unitTable.innerHTML = html;
+    
+    // Store army data for later use
+    window.attackArmyData = unitGroups;
+}
+
+function updateAttackPower() {
+    let totalPower = 0;
+    
+    // Calculate total combat power
+    document.querySelectorAll('input[id^="send-"]').forEach(input => {
+        const unitCount = parseInt(input.value) || 0;
+        const combatPerUnit = parseFloat(input.dataset.combatPerUnit) || 0;
+        const unitType = input.dataset.unitType;
+        
+        const combatPower = unitCount * combatPerUnit;
+        totalPower += combatPower;
+        
+        // Update individual unit combat display
+        const combatCell = document.getElementById(`combat-${unitType}`);
+        if (combatCell) {
+            combatCell.textContent = Math.floor(combatPower).toLocaleString();
+        }
+    });
+    
+    // Update total attack power
+    document.getElementById('total-attack-power').textContent = Math.floor(totalPower).toLocaleString();
+}
+
+function launchAttackWithUnits() {
+    const attackUnits = {};
+    let totalUnits = 0;
+    
+    // Collect attack units from input fields
+    document.querySelectorAll('input[id^="send-"]').forEach(input => {
+        const unitType = input.dataset.unitType;
+        const unitCount = parseInt(input.value) || 0;
+        
+        if (unitCount > 0) {
+            attackUnits[unitType] = unitCount;
+            totalUnits += unitCount;
+        }
+    });
+    
+    if (totalUnits === 0) {
+        alert('Please select at least some units to attack with!');
+        return;
+    }
+    
+    // Confirm attack
+    const tile = document.querySelector(`[data-x="${selectedX}"][data-y="${selectedY}"]`);
+    const owner = tile ? tile.dataset.owner : 'Unknown';
+    
+    const unitsList = Object.keys(attackUnits).map(type => 
+        `${attackUnits[type]} ${type.replace('_', ' ')}`
+    ).join(', ');
+    
+    if (!confirm(`Are you sure you want to raid ${owner} at (${selectedX}|${selectedY}) with: ${unitsList}?`)) {
+        return;
+    }
+    
+    // Disable raid button
+    document.getElementById('launch-attack-btn').disabled = true;
+    document.getElementById('launch-attack-btn').textContent = 'LAUNCHING...';
+    
+    // Get territory information and launch raid
+    fetch('/game/api/territory-info/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ x: selectedX, y: selectedY })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Launch attack with specific unit counts
+            const attackData = {
+                target_x: selectedX,
+                target_y: selectedY,
+                attack_units: attackUnits
+            };
+            
+            return fetch('/game/api/launch-attack/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(attackData)
+            });
+        } else {
+            throw new Error('Failed to get territory information');
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert(`Raid launched successfully! ${result.message}`);
+            closeAttackModal();
+            closeVillagePopup();
+            // Redirect to military page to see raid progress
+            window.location.href = '/game/military/';
+        } else {
+            alert('Raid failed: ' + result.error);
+            // Re-enable button
+            document.getElementById('launch-attack-btn').disabled = false;
+            document.getElementById('launch-attack-btn').textContent = '💰 LAUNCH RAID';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while launching the raid: ' + error.message);
+        // Re-enable button
+        document.getElementById('launch-attack-btn').disabled = false;
+        document.getElementById('launch-attack-btn').textContent = '💰 LAUNCH RAID';
+    });
+}
+
+function closeAttackModal() {
+    document.getElementById('attack-modal').style.display = 'none';
+}
+
+function exploreVillage() {
+    if (selectedX === null) return;
+    // Redirect to territory page for exploration
+    window.location.href = `/game/territory/${selectedX}/${selectedY}/`;
+}
+
+function closeVillageInfo() {
+    // Close the old village info panel (if it's ever shown)
+    const villageInfo = document.getElementById('village-info');
+    if (villageInfo) {
+        villageInfo.style.display = 'none';
+    }
+    selectedX = null;
+    selectedY = null;
+}
+
+function getCsrfToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfToken ? csrfToken.value : '{{ csrf_token }}';
+}
+
+// Initialize map
+document.addEventListener('DOMContentLoaded', function() {
+    // Add hover effects
+    document.querySelectorAll('.village-tile').forEach(tile => {
+        tile.addEventListener('mouseenter', function() {
+            if (this.dataset.x != selectedX || this.dataset.y != selectedY) {
+                this.style.transform = 'scale(1.2)';
+                this.style.zIndex = '10';
+            }
+            // Show owner tooltip
+            const tooltip = this.querySelector('.owner-tooltip');
+            if (tooltip) {
+                tooltip.style.opacity = '1';
+            }
+        });
+        
+        tile.addEventListener('mouseleave', function() {
+            if (this.dataset.x != selectedX || this.dataset.y != selectedY) {
+                this.style.transform = '';
+                this.style.zIndex = '';
+            }
+            // Hide owner tooltip
+            const tooltip = this.querySelector('.owner-tooltip');
+            if (tooltip) {
+                tooltip.style.opacity = '0';
+            }
+        });
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+        if (event.target.tagName === 'INPUT') return;
+        
+        switch(event.key) {
+            case 'Escape':
+                closeVillagePopup();
+                break;
+        }
+    });
+});
+</script>
+
+<style>
+.village-tile {
+    transition: all 0.3s ease !important;
+}
+
+.village-tile:hover {
+    filter: brightness(1.3) !important;
+}
+
+.world-map {
+    background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+}
+
+/* Player village pulsing animation */
+@keyframes playerPulse {
+    0% { box-shadow: 0 0 6px rgba(68, 255, 68, 0.8); }
+    50% { box-shadow: 0 0 12px rgba(68, 255, 68, 1), 0 0 20px rgba(68, 255, 68, 0.5); }
+    100% { box-shadow: 0 0 6px rgba(68, 255, 68, 0.8); }
+}
+
+button:hover {
+    transform: scale(1.05) !important;
+    filter: brightness(1.1) !important;
+}
+
+button:disabled:hover {
+    transform: none !important;
+    filter: none !important;
+}
+
+/* Popup modal styling */
+#village-popup {
+    backdrop-filter: blur(5px);
+}
+
+/* Make sure the map container can scroll if needed */
+@media (max-width: 900px) {
+    .world-map {
+        grid-template-columns: repeat(50, 12px) !important;
+        grid-template-rows: repeat(50, 12px) !important;
+    }
+    
+    .village-tile {
+        width: 12px !important;
+        height: 12px !important;
+        font-size: 8px !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .world-map {
+        grid-template-columns: repeat(50, 10px) !important;
+        grid-template-rows: repeat(50, 10px) !important;
+    }
+    
+    .village-tile {
+        width: 10px !important;
+        height: 10px !important;
+        font-size: 6px !important;
+    }
+}
+</style>
+{% endblock %} 

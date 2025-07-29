@@ -1,0 +1,255 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+    <style>
+        .stats-dashboard {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .resource-totals {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .resource-total {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .top-empires {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .empire-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .empire-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto;
+            gap: 15px;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .empire-rank {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 18px;
+        }
+        .empire-info {
+            text-align: left;
+        }
+        .empire-name {
+            font-weight: bold;
+            color: #495057;
+        }
+        .empire-player {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .empire-power {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .empire-type {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: white;
+        }
+        .human-player {
+            background: #007bff;
+        }
+        .master-player {
+            background: #dc3545;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .refresh-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="stats-dashboard">
+    <button onclick="window.location.reload()" class="refresh-btn">
+        🔄 Refresh Statistics
+    </button>
+    
+    <div class="stats-grid">
+        <!-- Player Statistics -->
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_empires }}</div>
+            <div class="stat-label">Total Empires</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.human_players }}</div>
+            <div class="stat-label">Human Players</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.master_players }}</div>
+            <div class="stat-label">Master Players (Bots)</div>
+        </div>
+        
+        <!-- Territory Statistics -->
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_territories }}</div>
+            <div class="stat-label">Total Territories</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.occupied_territories }}</div>
+            <div class="stat-label">Occupied Territories</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_buildings }}</div>
+            <div class="stat-label">Total Buildings</div>
+        </div>
+        
+        <!-- Military Statistics -->
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_armies }}</div>
+            <div class="stat-label">Total Armies</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_battles }}</div>
+            <div class="stat-label">Total Battles</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.active_battles }}</div>
+            <div class="stat-label">Active Battles</div>
+        </div>
+        
+        <!-- Social Statistics -->
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.alliances }}</div>
+            <div class="stat-label">Total Alliances</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.achievements_earned }}</div>
+            <div class="stat-label">Achievements Earned</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.avg_power|floatformat:0 }}</div>
+            <div class="stat-label">Average Power</div>
+        </div>
+    </div>
+    
+    <!-- Resource Totals -->
+    <div class="stat-card">
+        <div class="section-title">🏰 Kingdom Resource Totals</div>
+        <div class="resource-totals">
+            <div class="resource-total">
+                <div style="font-size: 24px;">⚡</div>
+                <div style="font-size: 18px; font-weight: bold; color: #ffc107;">{{ stats.resource_totals.total_energy|floatformat:0 }}</div>
+                <div style="font-size: 12px; color: #6c757d;">TOTAL ENERGY</div>
+            </div>
+            <div class="resource-total">
+                <div style="font-size: 24px;">⛏</div>
+                <div style="font-size: 18px; font-weight: bold; color: #6c757d;">{{ stats.resource_totals.total_minerals|floatformat:0 }}</div>
+                <div style="font-size: 12px; color: #6c757d;">TOTAL MINERALS</div>
+            </div>
+            <div class="resource-total">
+                <div style="font-size: 24px;">🌾</div>
+                <div style="font-size: 18px; font-weight: bold; color: #28a745;">{{ stats.resource_totals.total_food|floatformat:0 }}</div>
+                <div style="font-size: 12px; color: #6c757d;">TOTAL FOOD</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Empires -->
+    <div class="top-empires">
+        <div class="section-title">👑 Top 10 Empires by Power</div>
+        <div class="empire-list">
+            {% for empire in stats.top_empires %}
+                <div class="empire-item">
+                    <div class="empire-rank">#{{ forloop.counter }}</div>
+                    <div class="empire-info">
+                        <div class="empire-name">{{ empire.name }}</div>
+                        <div class="empire-player">{{ empire.user.username }}</div>
+                    </div>
+                    <div class="empire-power">{{ empire.power_level|floatformat:0 }}</div>
+                    <div class="empire-type {% if empire.is_master_player %}master-player{% else %}human-player{% endif %}">
+                        {% if empire.is_master_player %}BOT{% else %}HUMAN{% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="stat-card">
+        <div class="section-title">⚡ Quick Actions</div>
+        <div style="text-align: center;">
+            <a href="{% url 'admin:game_empire_changelist' %}" class="refresh-btn" style="text-decoration: none; margin: 5px;">
+                🏰 Manage Empires
+            </a>
+            <a href="{% url 'admin:game_battle_changelist' %}" class="refresh-btn" style="text-decoration: none; margin: 5px;">
+                ⚔️ View Battles
+            </a>
+            <a href="{% url 'admin:game_alliance_changelist' %}" class="refresh-btn" style="text-decoration: none; margin: 5px;">
+                🤝 Manage Alliances
+            </a>
+            <a href="{% url 'admin:game_tournament_changelist' %}" class="refresh-btn" style="text-decoration: none; margin: 5px;">
+                🏆 Manage Tournaments
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Galactic Tournaments - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                          GALACTIC TOURNAMENTS                                       │
+    │                        {{ empire.name|upper }} COMPETITION HUB                     │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Tournament Status -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ TOURNAMENT STATUS ]</h3>
+    <div style="font-family: monospace; font-size: 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div style="text-align: center; padding: 15px; border: 1px solid #ffaa44; background: rgba(255, 170, 68, 0.1);">
+            🏆 TOURNAMENTS<br>
+            <span style="font-size: 18px; font-weight: bold; color: #ffaa44;">{{ current_tournaments.count }}</span><br>
+            <span style="font-size: 12px; opacity: 0.8;">Active</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #44ff44; background: rgba(68, 255, 68, 0.1);">
+            🎯 PARTICIPATED<br>
+            <span style="font-size: 18px; font-weight: bold; color: #44ff44;">{{ empire_tournaments.count }}</span><br>
+            <span style="font-size: 12px; opacity: 0.8;">Total</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #ff4444; background: rgba(255, 68, 68, 0.1);">
+            ⚡ POWER LEVEL<br>
+            <span style="font-size: 18px; font-weight: bold; color: #ff4444;">{{ empire.power_level:,}}</span><br>
+            <span style="font-size: 12px; opacity: 0.8;">Current</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #aa44ff; background: rgba(170, 68, 255, 0.1);">
+            🏅 RANK<br>
+            <span style="font-size: 18px; font-weight: bold; color: #aa44ff;">#{{ empire.rank }}</span><br>
+            <span style="font-size: 12px; opacity: 0.8;">Galaxy</span>
+        </div>
+    </div>
+</div>
+
+<!-- Current Tournaments -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ ACTIVE TOURNAMENTS ]</h3>
+    
+    {% if current_tournaments %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+        {% for tournament in current_tournaments %}
+        <div style="border: 2px solid {% if tournament.tournament_type == 'battle_royale' %}#ff4444{% elif tournament.tournament_type == 'alliance_war' %}#aa44ff{% else %}#ffaa44{% endif %}; 
+                    padding: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 8px;">
+            
+            <!-- Tournament Header -->
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h4 style="color: {% if tournament.tournament_type == 'battle_royale' %}#ff4444{% elif tournament.tournament_type == 'alliance_war' %}#aa44ff{% else %}#ffaa44{% endif %}; 
+                           font-size: 16px; margin-bottom: 5px;">
+                    {% if tournament.tournament_type == 'power_ranking' %}🏆{% elif tournament.tournament_type == 'territory_conquest' %}🗺️{% elif tournament.tournament_type == 'resource_gathering' %}💎{% elif tournament.tournament_type == 'battle_royale' %}⚔️{% else %}🤝{% endif %}
+                    {{ tournament.name }}
+                </h4>
+                <div style="font-size: 12px; color: #aaa;">
+                    {{ tournament.get_tournament_type_display }} Tournament
+                </div>
+            </div>
+            
+            <!-- Tournament Info -->
+            <div style="font-family: monospace; font-size: 12px; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <strong>📅 SCHEDULE:</strong><br>
+                        Registration: {{ tournament.registration_start|date:"M d, H:i" }} - {{ tournament.registration_end|date:"M d, H:i" }}<br>
+                        Tournament: {{ tournament.tournament_start|date:"M d, H:i" }} - {{ tournament.tournament_end|date:"M d, H:i" }}
+                    </div>
+                    <div>
+                        <strong>👥 PARTICIPANTS:</strong><br>
+                        Registered: {{ tournament.participants.count }} / {{ tournament.max_participants }}<br>
+                        Slots: {% if tournament.participants.count < tournament.max_participants %}{{ tournament.max_participants|add:tournament.participants.count|floatformat:0|add:" available" }}{% else %}FULL{% endif %}
+                    </div>
+                </div>
+                
+                {% if tournament.entry_fee_energy or tournament.entry_fee_minerals or tournament.entry_fee_food %}
+                <div style="margin-top: 10px;">
+                    <strong>💰 ENTRY FEE:</strong><br>
+                    {% if tournament.entry_fee_energy %}⚡{{ tournament.entry_fee_energy:,}} {% endif %}
+                    {% if tournament.entry_fee_minerals %}⛏{{ tournament.entry_fee_minerals:,}} {% endif %}
+                    {% if tournament.entry_fee_food %}🌾{{ tournament.entry_fee_food:,}}{% endif %}
+                </div>
+                {% endif %}
+                
+                <div style="margin-top: 10px;">
+                    <strong>🏆 PRIZES:</strong><br>
+                    1st: ⚡{{ tournament.first_place_energy:,}} ⛏{{ tournament.first_place_minerals:,}} 🌾{{ tournament.first_place_food:,}}<br>
+                    2nd: ⚡{{ tournament.second_place_energy:,}} ⛏{{ tournament.second_place_minerals:,}} 🌾{{ tournament.second_place_food:,}}<br>
+                    3rd: ⚡{{ tournament.third_place_energy:,}} ⛏{{ tournament.third_place_minerals:,}} 🌾{{ tournament.third_place_food:,}}
+                </div>
+            </div>
+            
+            <!-- Tournament Description -->
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 15px; line-height: 1.4;">
+                {{ tournament.description }}
+            </div>
+            
+            <!-- Registration Status -->
+            <div style="text-align: center;">
+                {% if empire in tournament.participants.all %}
+                <div style="color: #44ff44; font-weight: bold; margin-bottom: 10px;">
+                    ✅ REGISTERED
+                </div>
+                <div style="font-size: 12px; color: #aaa;">
+                    You are participating in this tournament
+                </div>
+                {% else %}
+                    {% now "Y-m-d H:i:s" as current_time %}
+                    {% if tournament.registration_end|date:"Y-m-d H:i:s" > current_time %}
+                        {% if tournament.participants.count < tournament.max_participants %}
+                        <button class="form-button register-tournament" 
+                                data-tournament-id="{{ tournament.id }}"
+                                style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 2px solid #44ff44; color: #44ff44;">
+                            [ REGISTER FOR TOURNAMENT ]
+                        </button>
+                        {% else %}
+                        <div style="color: #ff4444; font-weight: bold;">
+                            ❌ TOURNAMENT FULL
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <div style="color: #ffaa44; font-weight: bold;">
+                        📅 REGISTRATION CLOSED
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; opacity: 0.6;">
+        <div style="font-size: 48px; margin-bottom: 20px;">🏆</div>
+        <h3>No Active Tournaments</h3>
+        <p>Check back later for new competitions!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tournament History -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ YOUR TOURNAMENT HISTORY ]</h3>
+    
+    {% if empire_tournaments %}
+    <div style="max-height: 400px; overflow-y: auto;">
+        {% for tournament in empire_tournaments %}
+        <div style="border: 1px solid #666; padding: 15px; margin: 10px 0; background: rgba(255, 255, 255, 0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <strong style="color: #ffaa44;">
+                    {% if tournament.tournament_type == 'power_ranking' %}🏆{% elif tournament.tournament_type == 'territory_conquest' %}🗺️{% elif tournament.tournament_type == 'resource_gathering' %}💎{% elif tournament.tournament_type == 'battle_royale' %}⚔️{% else %}🤝{% endif %}
+                    {{ tournament.name }}
+                </strong>
+                <span style="color: {% if tournament.tournament_end < now %}#44ff44{% else %}#ffaa44{% endif %}; font-size: 12px;">
+                    {% if tournament.tournament_end < now %}COMPLETED{% else %}ONGOING{% endif %}
+                </span>
+            </div>
+            
+            <div style="font-family: monospace; font-size: 12px;">
+                Type: {{ tournament.get_tournament_type_display }}<br>
+                Participants: {{ tournament.participants.count }}<br>
+                Started: {{ tournament.tournament_start|date:"M d, Y H:i" }}<br>
+                {% if tournament.tournament_end < now %}
+                Ended: {{ tournament.tournament_end|date:"M d, Y H:i" }}
+                {% else %}
+                Ends: {{ tournament.tournament_end|date:"M d, Y H:i" }}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; opacity: 0.6;">
+        You haven't participated in any tournaments yet
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tournament Types Guide -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ TOURNAMENT TYPES ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; font-family: monospace; font-size: 12px;">
+        <div style="border: 1px solid #ffaa44; padding: 15px; background: rgba(255, 170, 68, 0.05);">
+            <strong style="color: #ffaa44;">🏆 POWER RANKING:</strong><br>
+            Compete based on total empire power level. Build, research, and expand to climb the rankings. Winner has the highest power at tournament end.
+        </div>
+        <div style="border: 1px solid #44ff44; padding: 15px; background: rgba(68, 255, 68, 0.05);">
+            <strong style="color: #44ff44;">🗺️ TERRITORY CONQUEST:</strong><br>
+            Race to control the most territories. Strategic expansion and military might determine victory. Defend what you conquer!
+        </div>
+        <div style="border: 1px solid #44ffaa; padding: 15px; background: rgba(68, 255, 170, 0.05);">
+            <strong style="color: #44ffaa;">💎 RESOURCE GATHERING:</strong><br>
+            Accumulate the highest total resources. Focus on production, trade, and efficient resource management to win.
+        </div>
+        <div style="border: 1px solid #ff4444; padding: 15px; background: rgba(255, 68, 68, 0.05);">
+            <strong style="color: #ff4444;">⚔️ BATTLE ROYALE:</strong><br>
+            Last empire standing wins! Eliminate other participants through combat. Pure military strategy and tactics.
+        </div>
+        <div style="border: 1px solid #aa44ff; padding: 15px; background: rgba(170, 68, 255, 0.05);">
+            <strong style="color: #aa44ff;">🤝 ALLIANCE WAR:</strong><br>
+            Team-based competition between alliances. Coordinate with allies to defeat enemy alliances through combined strategy.
+        </div>
+    </div>
+</div>
+
+<!-- Tournament Strategy Guide -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ TOURNAMENT STRATEGY ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; font-family: monospace; font-size: 12px;">
+        <div>
+            <strong>📋 PREPARATION TIPS:</strong><br>
+            • Build up resources before registration<br>
+            • Ensure strong military forces<br>
+            • Research key technologies<br>
+            • Form alliance partnerships<br>
+            • Study opponent strategies
+        </div>
+        <div>
+            <strong>⚔️ COMBAT STRATEGY:</strong><br>
+            • Early aggression vs late game power<br>
+            • Target weaker opponents first<br>
+            • Defend key territories<br>
+            • Use spies for intelligence<br>
+            • Coordinate alliance attacks
+        </div>
+        <div>
+            <strong>💰 RESOURCE MANAGEMENT:</strong><br>
+            • Balance production and military<br>
+            • Trade for needed resources<br>
+            • Protect resource-rich territories<br>
+            • Plan for long tournaments<br>
+            • Emergency reserve funds
+        </div>
+        <div>
+            <strong>🏆 WINNING CONDITIONS:</strong><br>
+            • Study tournament type carefully<br>
+            • Adapt strategy mid-tournament<br>
+            • Monitor competitor progress<br>
+            • Time critical moves precisely<br>
+            • Maintain steady growth
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Register tournament buttons
+    document.querySelectorAll('.register-tournament').forEach(button => {
+        button.addEventListener('click', async function() {
+            const tournamentId = this.dataset.tournamentId;
+            
+            if (!confirm('Are you sure you want to register for this tournament? Entry fees are non-refundable.')) {
+                return;
+            }
+            
+            const data = {
+                tournament_id: tournamentId
+            };
+            
+            const response = await fetch('/game/api/register-tournament/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    });
+    
+    // Auto-refresh tournament data every 30 seconds
+    setInterval(async function() {
+        try {
+            const response = await fetch('/game/api/bulk-update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({})
+            });
+            
+            const result = await response.json();
+            if (result.success && result.updates.achievements_earned > 0) {
+                NovaGame.showNotification(`🏆 ${result.updates.achievements_earned} new achievement(s) earned!`, 'success');
+            }
+        } catch (error) {
+            console.log('Auto-update failed:', error);
+        }
+    }, 30000);
+});
+</script>
+
+<!-- Hidden CSRF token for API calls -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+{% endblock %} 

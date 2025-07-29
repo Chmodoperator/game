@@ -1,0 +1,2054 @@
+{% extends "base.html" %}
+
+{% load dict_extras %}
+
+{% block title %}Military Command - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<!-- Hidden CSRF Token for AJAX requests -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<!-- Current Military Forces -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>[ ⚔️ AVAILABLE MILITARY FORCES ]</h3>
+        <a href="{% url 'game:unit_stats' %}" style="color: #44ff44; text-decoration: none; font-size: 12px; padding: 5px 10px; border: 1px solid #44ff44; border-radius: 4px; background: rgba(68, 255, 68, 0.1);">
+            📊 View Unit Statistics
+        </a>
+    </div>
+    
+    {% if territories %}
+        {% for territory in territories %}
+            {% with armies=available_armies_by_territory|get_item:territory.id %}
+                {% if armies and armies|length > 0 %}
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #ffaa44; margin-bottom: 10px;">
+                        🗺️ Territory ({{ territory.x }}, {{ territory.y }}) - {{ territory.get_terrain_type_display }}
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px;">
+                        {% for army in armies %}
+                        <div class="army-card" data-army-id="{{ army.id }}" style="background: rgba(255, 255, 255, 0.02); border: 1px solid #333; border-radius: 6px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-weight: bold; color: #44ff44;">
+                                    {% if army.unit_type == "infantry" %}🪖 Infantry
+                                    {% elif army.unit_type == "archers" %}🏹 Archers
+                                    {% elif army.unit_type == "spearmen" %}🗡️ Spearmen
+                                    {% elif army.unit_type == "heavy_knights" %}<span style="color: #ffaa44;">⚔️ Heavy Knights</span>
+                                    {% elif army.unit_type == "royal_knights" %}<span style="color: #ffaa44;">👑 Royal Knights</span>
+                                    {% elif army.unit_type == "spies" %}<span style="color: #aa44ff;">🕵️ Spies</span>
+                                    {% elif army.unit_type == "tanks" %}🏹 Archers
+                                    {% elif army.unit_type == "aircraft" %}🗡️ Spearmen
+                                    {% elif army.unit_type == "naval" %}<span style="color: #ffaa44;">⚔️ Heavy Knights</span>
+                                    {% elif army.unit_type == "cyber" %}<span style="color: #ffaa44;">👑 Royal Knights</span>
+                                    {% elif army.unit_type == "mechs" %}🗿 Ancient Golems
+                                    {% endif %}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="number" 
+                                           class="army-send-input" 
+                                           data-army-id="{{ army.id }}"
+                                           data-army-type="{{ army.unit_type }}"
+                                           data-max-units="{{ army.available_size }}"
+                                           data-combat-per-unit="{{ army.combat_per_unit|floatformat:1 }}"
+                                           min="0" 
+                                           max="{{ army.available_size }}" 
+                                           value="0" 
+                                           style="width: 80px; padding: 4px; background: #1a1a1a; border: 1px solid #666; color: #fff; text-align: center; border-radius: 4px; font-size: 11px;"
+                                           oninput="updateAttackSelection()"
+                                           {% if army.is_in_battle %}disabled title="Army away in battle"{% endif %}>
+                                    <span style="font-size: 10px; color: #aaa;">/ {{ army.available_size }}</span>
+                                </div>
+                            </div>
+                            <div style="font-family: monospace; font-size: 11px; line-height: 1.4;">
+                                <div>Available: <span class="army-size" style="color: #44ff44; font-weight: bold;">{{ army.available_size }}</span>
+                                    {% if army.is_in_battle %}
+                                        <span style="color: #ff4444; font-size: 10px; margin-left: 5px;">⚔️ MAIN FORCE AWAY</span>
+                                    {% endif %}
+                                </div>
+                                <div>Combat Strength: <span style="color: #ff4444; font-weight: bold;">{{ army.get_combat_strength }}</span></div>
+                                {% if army.is_in_battle %}
+                                    <div style="color: #ff8800; font-size: 10px; margin-top: 3px;">
+                                        🏠 Recruitment continues at home<br>
+                                        ⚔️ Main force returns from battle soon
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endwith %}
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; color: #aaa; padding: 20px;">
+            No territories with available military forces.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Military Recruitment Center -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ 🏭 MILITARY RECRUITMENT CENTER ]</h3>
+    
+    {% if territories %}
+        <!-- Territory Selection -->
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #44ff44; margin-bottom: 15px;">📍 RECRUITMENT TERRITORY</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                {% for territory in territories %}
+                <div class="territory-option" data-territory-id="{{ territory.id }}" onclick="selectTerritory({{ territory.id }})" 
+                     style="padding: 12px; border: 2px solid #333; border-radius: 6px; cursor: pointer; background: rgba(255, 255, 255, 0.02); transition: all 0.2s ease;">
+                    <div style="font-weight: bold; color: #ffaa44; margin-bottom: 5px;">
+                        🗺️ ({{ territory.x }}, {{ territory.y }}) - {{ territory.get_terrain_type_display }}
+                    </div>
+                    <div style="font-size: 11px; color: #aaa;">
+                        {% if territory.buildings.count %}🏰 {{ territory.buildings.count }} buildings{% else %}🏗️ No buildings{% endif %}
+                        {% if territory.resource_bonus != 'none' %} | 💎 {{ territory.get_resource_bonus_display }}{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" id="selected-territory" value="{{ territories.0.id }}">
+        </div>
+        
+        <!-- Recruitment Table (Medieval Theme) -->
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid #333; border-radius: 6px; overflow: hidden;">
+            <div style="background: rgba(68, 255, 68, 0.1); border-bottom: 1px solid #44ff44; padding: 10px; text-align: center; font-weight: bold; color: #44ff44;">
+                STRATEGIC MILITARY RECRUITMENT
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">
+                    Army Units (Green) • Knight Units (Orange) • Spy Units (Purple) • Attack vs Army/Knights/Spies • Defense vs Army/Knights/Spies
+                </div>
+                <div style="text-align: right; font-size: 12px; color: #ffaa44; margin-top: 8px;">
+                    <span style="font-weight: bold;">Gold:</span> <span id="player-gold">{{ empire.gold|default:0 }}</span> 🪙
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0;">
+                {% for unit in unit_data %}
+                <div class="unit-recruitment-cell" data-unit-type="{{ unit.type }}" onclick="showUnitModal('{{ unit.type }}')">
+                    <div class="unit-header">
+                        <div style="font-size: 24px; margin-bottom: 5px;">
+                            {% if unit.type == 'infantry' %}🪖{% elif unit.type == 'archers' %}🏹{% elif unit.type == 'spearmen' %}🔱{% elif unit.type == 'heavy_knights' %}🐎{% elif unit.type == 'royal_knights' %}👑{% elif unit.type == 'spies' %}🕵️{% elif unit.type == 'catapult' %}🏰{% elif unit.type == 'ram' %}🛡️{% elif unit.type == 'hero' %}🧙{% elif unit.type == 'healer' %}🧑‍⚕️{% elif unit.type == 'scout_hawk' %}🦅{% else %}❓{% endif %}
+                        </div>
+                        <div style="font-size: 12px; font-weight: bold; color: #44ff44;">{{ unit.display_name }}</div>
+                        <div style="font-size: 10px; color: #ffaa00; margin-top: 2px;">{{ unit.special }}</div>
+                    </div>
+                    <div class="unit-stats">
+                        <div style="font-size: 10px; color: #aaa; margin-bottom: 8px;">
+                            Cost: {{ unit.training_cost.energy }}⚡ {{ unit.training_cost.minerals }}⛏ {{ unit.training_cost.food }}🌾<br>
+                            Time: {{ unit.training_time }} seconds/unit<br>
+                            <span style="color: #ff4444;">⚔️ {{ unit.attack }} attack</span><br>
+                            <span style="color: #44ff44;">🛡️ vs Infantry: {{ unit.def_infantry }}, vs Archers: {{ unit.def_archer }}, vs Spearmen: {{ unit.def_spearmen }}, vs Heavy Knights: {{ unit.def_heavy_knights }}, vs Royal Knights: {{ unit.def_royal_knights }}, vs Spies: {{ unit.def_spies }}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #ffaa00; margin-bottom: 4px;">{{ unit.description }}</div>
+                        <input type="number" class="unit-input" placeholder="0" min="0" max="10000" step="1" value="0" onclick="event.stopPropagation()">
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <button class="train-button" onclick="event.stopPropagation(); trainUnits('{{ unit.type }}')" style="flex: 1; font-size: 10px; padding: 4px;">RECRUIT</button>
+                            <button class="instant-train-button" onclick="event.stopPropagation(); instantTrainUnits('{{ unit.type }}')" style="flex: 1; font-size: 10px; padding: 4px; background: linear-gradient(145deg, #ffaa44, #ff8844); border-color: #ffaa44; color: #000;">⚡ INSTANT<br><span style='font-size:9px;'>10 🪙</span></button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Resource Summary -->
+        <div style="margin-top: 15px; padding: 10px; background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; border-radius: 6px; text-align: center;">
+            <div style="font-size: 12px; color: #ffaa44; font-weight: bold; margin-bottom: 5px;">CURRENT RESOURCES</div>
+            <div style="font-family: monospace; font-size: 14px;">
+                <span style="color: #ffaa00;">⚡{{ empire.energy|floatformat:"0" }}</span> | 
+                <span style="color: #aaa;">⛏{{ empire.minerals|floatformat:"0" }}</span> | 
+                <span style="color: #44ff44;">🌾{{ empire.food|floatformat:"0" }}</span>
+            </div>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 20px; color: #ff4444;">
+            ⚠ No territory available for deployment. Build your empire first!
+        </div>
+    {% endif %}
+</div>
+
+<!-- Resource Raiding -->
+<div class="dashboard-panel">
+    <h3>[ 💰 RESOURCE RAIDING ]</h3>
+    
+    <div id="selected-armies" style="margin-bottom: 15px;">
+        <h4 style="color: #44ff44; margin-bottom: 10px;">Selected Forces:</h4>
+        <div id="attack-force-list" style="font-family: monospace; font-size: 12px; color: #aaa; padding: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid #333; border-radius: 6px;">
+            No units selected for attack.
+        </div>
+        <div id="total-attack-power" style="margin-top: 10px; padding: 8px; background: rgba(68,255,68,0.1); border: 1px solid #44ff44; border-radius: 4px; display: none;">
+            <span style="color: #44ff44; font-weight: bold;">Total Attack Force: </span>
+            <span id="total-power-value" style="color: #44ff44; font-weight: bold;">0</span>
+        </div>
+    </div>
+    
+    <form id="attack-form" style="display: none;">
+        <div style="display: grid; grid-template-columns: auto auto 1fr; gap: 15px; align-items: end;">
+            <div>
+                <label class="form-label">Target X:</label>
+                <input type="number" name="target_x" placeholder="X" class="form-input" style="width: 60px;" min="0" max="49">
+            </div>
+            <div>
+                <label class="form-label">Target Y:</label>
+                <input type="number" name="target_y" placeholder="Y" class="form-input" style="width: 60px;" min="0" max="49">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="form-button" style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border-color: #ff4444;">
+                    [ COMMENCE ATTACK ]
+                </button>
+                <button type="button" onclick="clearAttackSelection()" class="form-button" style="background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-color: #aaa;">
+                    [ CLEAR SELECTION ]
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Unit Modal -->
+<div id="unitModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<script>
+let selectedArmies = {};
+
+// Unit Information Database
+const unitDatabase = {
+    'infantry': {
+        icon: '🪖',
+        name: 'Infantry',
+        type: 'Army Unit',
+        color: '#44ff44',
+        lore: `The backbone of every medieval army, these brave foot soldiers have served kingdoms for centuries. Armed with swords, shields, and unwavering loyalty, they form the foundation upon which empires are built. From peasant levies to professional soldiers, infantry units have defended castle walls, charged across battlefields, and held the line when all seemed lost.
+
+Each infantryman trains daily in weapon combat, formation fighting, and siege warfare. Their discipline and courage make them invaluable in both offensive and defensive operations. Though individually less powerful than elite knights, their numbers and coordinated tactics make them a formidable force.`,
+        
+        stats: {
+            cost: { energy: 1, minerals: 1, food: 1 },
+            training_time: '20 seconds',
+            attack_vs_army: 10,
+            attack_vs_knights: 5,
+            defense_vs_army: 15,
+            defense_vs_knights: 8,
+            speed: 'Medium',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • Low cost allows for mass production
+            • Strong defensive capabilities against other army units
+            • Quick training time for rapid army expansion
+            • Excellent for territorial defense and garrison duty
+            • Forms the core of any balanced military force
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Vulnerable to heavy cavalry charges
+            • Limited effectiveness against armored knights
+            • Requires numerical superiority for best results
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Early game expansion and defense
+            • Garrison forces for territory protection
+            • Siege warfare and castle assault
+            • Supporting role in combined arms tactics
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Required for recruitment
+            • <span style="color: #44ff44;">🌾 Farms:</span> Provides food for recruitment
+            • <span style="color: #ffaa44;">⚡ Power Plants:</span> Supplies energy needs
+            • <span style="color: #aaa;">🛡️ Defense Systems:</span> Enhances defensive capabilities
+            • <span style="color: #aa44ff;">🔬 Research Labs:</span> Unlocks advanced training
+        `
+    },
+    
+    'archers': {
+        icon: '🏹',
+        name: 'Archers',
+        type: 'Army Unit',
+        color: '#44ff44',
+        lore: `Masters of the longbow and crossbow, these skilled marksmen can strike down enemies from great distances. Trained from childhood in the art of archery, they can loose arrows with deadly precision even in the chaos of battle. Archer units have turned the tide of countless wars with their ability to rain death upon approaching enemies.
+
+From the English longbowmen at Agincourt to the Welsh archers defending mountain passes, these warriors have proven that skill and precision can overcome brute force. Their training includes not only marksmanship but also field tactics, allowing them to position themselves for maximum effectiveness while staying mobile on the battlefield.`,
+        
+        stats: {
+            cost: { energy: 2, minerals: 1, food: 1 },
+            training_time: '30 seconds',
+            attack_vs_army: 15,
+            attack_vs_knights: 12,
+            defense_vs_army: 8,
+            defense_vs_knights: 10,
+            speed: 'Fast',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • High attack power against all unit types
+            • Can engage enemies before they reach melee range
+            • Mobile and can reposition quickly
+            • Effective against both army units and knights
+            • Excellent for harassment tactics and hit-and-run
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Vulnerable when caught in close combat
+            • Lower defensive capabilities
+            • Requires energy resources for recruitment
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Long-range support for infantry advances
+            • Castle siege operations and wall defense
+            • Ambush tactics and forest warfare
+            • Anti-cavalry screening force
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Required for recruitment
+            • <span style="color: #ffaa44;">⚡ Power Plants:</span> Supplies energy for equipment
+            • <span style="color: #aaa;">⛏️ Mines:</span> Provides materials for arrows and bows
+            • <span style="color: #aa44ff;">🏭 Factories:</span> Mass produces archery equipment
+            • <span style="color: #44ff44;">🌾 Farms:</span> Sustains archer training programs
+        `
+    },
+    
+    'spearmen': {
+        icon: '🗡️',
+        name: 'Spearmen',
+        type: 'Army Unit',
+        color: '#44ff44',
+        lore: `Elite warriors wielding long spears and pikes, these soldiers specialize in anti-cavalry warfare. Their disciplined phalanx formations can stop even the most determined knight charge, turning the battlefield into a forest of deadly spear points. Spearmen represent the pinnacle of infantry training and tactical excellence.
+
+These professional soldiers train extensively in formation fighting, learning to move as one unit while maintaining their defensive wall of spears. Their role as knight-killers has made them feared across the realm, as even the most heavily armored cavalry think twice before charging a well-formed spear wall.`,
+        
+        stats: {
+            cost: { energy: 2, minerals: 2, food: 1 },
+            training_time: '40 seconds',
+            attack_vs_army: 8,
+            attack_vs_knights: 20,
+            defense_vs_army: 12,
+            defense_vs_knights: 25,
+            speed: 'Slow',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • Devastating effectiveness against mounted units
+            • Excellent defensive capabilities vs knights
+            • Can form impenetrable defensive formations
+            • High mineral investment pays off against elite enemies
+            • Perfect counter to enemy cavalry forces
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Slow movement speed limits mobility
+            • Less effective against other infantry
+            • Higher resource cost than basic infantry
+            • Vulnerable to archer fire when in formation
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Anti-cavalry defensive lines
+            • Castle gate defense and chokepoint control
+            • Supporting heavy infantry advances
+            • Protecting archers from knight charges
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Required for recruitment
+            • <span style="color: #aaa;">⛏️ Mines:</span> Essential for spear and armor production
+            • <span style="color: #ffaa44;">⚡ Power Plants:</span> Powers weapon forging
+            • <span style="color: #aa44ff;">🏭 Factories:</span> Mass produces pikes and polearms
+            • <span style="color: #aa44ff;">🔬 Research Labs:</span> Develops advanced tactics
+        `
+    },
+    
+    'heavy_knights': {
+        icon: '⚔️',
+        name: 'Heavy Knights',
+        type: 'Elite Knight Unit',
+        color: '#ffaa44',
+        lore: `Armored warriors astride powerful warhorses, these knights represent the elite of medieval warfare. Clad in steel plate and chain mail, they charge into battle with lance and sword, their thunderous charge capable of breaking enemy lines and striking fear into the hearts of opponents. Each knight represents years of training and a significant investment in equipment and breeding.
+
+These noble warriors follow a code of chivalry and honor, but on the battlefield they are instruments of destruction. Their heavy armor allows them to wade through enemy formations while their mounted mobility gives them tactical advantages. The sight of heavy knights charging across a field has decided the fate of kingdoms.`,
+        
+        stats: {
+            cost: { energy: 8, minerals: 12, food: 4 },
+            training_time: '3 minutes',
+            attack_vs_army: 40,
+            attack_vs_knights: 25,
+            defense_vs_army: 20,
+            defense_vs_knights: 30,
+            speed: 'Fast',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • Devastating shock cavalry charges
+            • High mobility for flanking maneuvers
+            • Excellent against infantry formations
+            • Can break through enemy lines quickly
+            • Combines speed with heavy armor protection
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Expensive resource cost limits numbers
+            • Vulnerable to spearmen and pike formations
+            • Long training time delays deployment
+            • Requires significant food for horse maintenance
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Breakthrough assault operations
+            • Rapid territory conquest
+            • Elite strike force missions
+            • Decisive battle engagements
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Required for recruitment
+            • <span style="color: #aaa;">⛏️ Mines:</span> Critical for armor and weapon forging
+            • <span style="color: #44ff44;">🌾 Farms:</span> Essential for feeding warhorses
+            • <span style="color: #aa44ff;">🏭 Factories:</span> Advanced equipment production
+            • <span style="color: #ffaa44;">⚡ Power Plants:</span> Powers heavy industry
+        `
+    },
+    
+    'royal_knights': {
+        icon: '👑',
+        name: 'Royal Knights',
+        type: 'Elite Knight Unit',
+        color: '#ffaa44',
+        lore: `The ultimate expression of knightly power and royal authority, these legendary warriors represent the pinnacle of medieval military might. Chosen from the greatest knights in the realm, they serve directly under the crown and are equipped with the finest armor, weapons, and steeds that the kingdom can provide. Their very presence on the battlefield can turn the tide of war.
+
+Each Royal Knight is a veteran of countless battles, trained in both individual combat and large-scale tactics. They lead from the front, inspiring lesser troops while cutting through enemy ranks with unmatched skill. Their golden armor gleams like the sun, and their battle standards carry the full authority of the throne into combat.`,
+        
+        stats: {
+            cost: { energy: 15, minerals: 20, food: 8 },
+            training_time: '5 minutes',
+            attack_vs_army: 50,
+            attack_vs_knights: 35,
+            defense_vs_army: 25,
+            defense_vs_knights: 40,
+            speed: 'Very Fast',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • Highest attack power of all units
+            • Exceptional mobility and striking power
+            • Can single-handedly break enemy morale
+            • Superior training makes them multi-role units
+            • Devastating against all enemy types
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Extremely expensive to recruit and maintain
+            • Very long training time
+            • Limited numbers due to high costs
+            • Significant resource investment risk
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Game-changing decisive battles
+            • Elite rapid response force
+            • Siege-breaking operations
+            • Assassination and special missions
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Required for recruitment
+            • <span style="color: #aa44ff;">🏭 Factories:</span> Advanced equipment manufacturing
+            • <span style="color: #aaa;">⛏️ Mines:</span> Precious metals for royal armor
+            • <span style="color: #44ff44;">🌾 Farms:</span> Premium feed for royal warhorses
+            • <span style="color: #aa44ff;">🔬 Research Labs:</span> Advanced combat techniques
+        `
+    },
+    
+    'spies': {
+        icon: '🕵️',
+        name: 'Spies',
+        type: 'Special Operations Unit',
+        color: '#aa44ff',
+        lore: `Masters of stealth, deception, and intelligence gathering, these shadowy operatives work in the darkness where armies cannot tread. Trained in infiltration, sabotage, and assassination, spies represent the unseen hand of the kingdom reaching into enemy territory. They are the eyes and ears of the empire, gathering crucial intelligence that can prevent wars or ensure victory.
+
+These elite agents undergo years of specialized training in disguise, lockpicking, poison craft, and silent movement. They can slip through enemy lines undetected, gather information on troop movements, and eliminate key targets before vanishing into the night. Their work often determines the outcome of conflicts before the first sword is drawn.`,
+        
+        stats: {
+            cost: { energy: 10, minerals: 5, food: 3 },
+            training_time: '2 minutes',
+            attack_vs_army: 0,
+            attack_vs_knights: 0,
+            attack_vs_spies: 25,
+            defense_vs_army: 0,
+            defense_vs_knights: 0,
+            defense_vs_spies: 15,
+            speed: 'Very Fast',
+            population_cost: 1
+        },
+        
+        tactical_info: `
+            <strong style="color: #44ff44;">TACTICAL ADVANTAGES:</strong>
+            • Gathers intelligence on enemy forces and plans
+            • Can infiltrate enemy territories undetected
+            • Effective counter-intelligence operations
+            • Sabotage enemy supply lines and buildings
+            • Provides early warning of incoming attacks
+            
+            <strong style="color: #ff4444;">TACTICAL WEAKNESSES:</strong>
+            • Cannot fight conventional military units
+            • Requires Intelligence Hub infrastructure
+            • Vulnerable if detected during missions
+            • Limited to spy vs spy combat only
+            
+            <strong style="color: #ffaa44;">STRATEGIC USES:</strong>
+            • Pre-battle intelligence gathering
+            • Enemy territory reconnaissance
+            • Counter-espionage operations
+            • Sabotage and disruption missions
+        `,
+        
+        buildings_synergy: `
+            <strong style="color: #44ff44;">🏰 HELPFUL BUILDINGS:</strong>
+            • <span style="color: #aa44ff;">🎯 Intelligence Hub:</span> Required for recruitment
+            • <span style="color: #ff4444;">🪖 Barracks:</span> Basic military training
+            • <span style="color: #aa44ff;">🔬 Research Labs:</span> Advanced spy techniques
+            • <span style="color: #ffaa44;">⚡ Power Plants:</span> Communication equipment
+            • <span style="color: #aa44ff;">🕵️ Spy Networks:</span> Intelligence coordination
+        `
+    },
+    'cyber': { energy: 15, minerals: 20, food: 8 }        // Royal Knights: 15⚡ 20⛏ 8🌾 per unit
+};
+
+// Unit costs data (per single unit)
+const unitCosts = {
+    'infantry': { energy: 1, minerals: 1, food: 1 },      // Infantry: 1⚡ 1⛏ 1🌾 per unit
+    'archers': { energy: 2, minerals: 1, food: 1 },       // Archers: 2⚡ 1⛏ 1🌾 per unit
+    'spearmen': { energy: 2, minerals: 2, food: 1 },      // Spearmen: 2⚡ 2⛏ 1🌾 per unit
+    'heavy_knights': { energy: 8, minerals: 12, food: 4 }, // Heavy Knights: 8⚡ 12⛏ 4🌾 per unit
+    'royal_knights': { energy: 15, minerals: 20, food: 8 }, // Royal Knights: 15⚡ 20⛏ 8🌾 per unit
+    'spies': { energy: 10, minerals: 5, food: 3 },         // Spies: 10⚡ 5⛏ 3🌾 per unit
+    // Backward compatibility
+    'tanks': { energy: 2, minerals: 1, food: 1 },         // Archers: 2⚡ 1⛏ 1🌾 per unit
+    'aircraft': { energy: 2, minerals: 2, food: 1 },      // Spearmen: 2⚡ 2⛏ 1🌾 per unit
+    'naval': { energy: 8, minerals: 12, food: 4 },        // Heavy Knights: 8⚡ 12⛏ 4🌾 per unit
+    'cyber': { energy: 15, minerals: 20, food: 8 }        // Royal Knights: 15⚡ 20⛏ 8🌾 per unit
+};
+
+// Show unit information modal
+function showUnitModal(unitType) {
+    const unit = unitDatabase[unitType];
+    if (!unit) return;
+    
+    // Update modal header
+    document.getElementById('unit-modal-icon').textContent = unit.icon;
+    document.getElementById('unit-modal-name').textContent = unit.name.toUpperCase();
+    document.getElementById('unit-modal-title').style.color = unit.color;
+    
+    // Build modal content
+    const content = document.getElementById('unit-modal-content');
+    
+    const html = `
+        <div style="margin-bottom: 20px;">
+            <div style="padding: 15px; background: rgba(${unit.color === '#44ff44' ? '68, 255, 68' : unit.color === '#ffaa44' ? '255, 170, 68' : '170, 68, 255'}, 0.1); border-left: 3px solid ${unit.color}; border-radius: 4px;">
+                <h4 style="color: ${unit.color}; margin: 0 0 10px 0;">${unit.type}</h4>
+                <div style="font-size: 13px; line-height: 1.6; color: #ddd;">${unit.lore}</div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <!-- Combat Statistics -->
+            <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid #333; border-radius: 6px; padding: 15px;">
+                <h4 style="color: #ff4444; margin-bottom: 15px;">⚔️ Combat Statistics</h4>
+                <div style="font-size: 12px; line-height: 1.8;">
+                    <div><strong>Cost:</strong> <span style="color: #ffaa00;">⚡${unit.stats.cost.energy}</span> <span style="color: #aaa;">⛏${unit.stats.cost.minerals}</span> <span style="color: #44ff44;">🌾${unit.stats.cost.food}</span></div>
+                    <div><strong>Training Time:</strong> <span style="color: #00aaff;">${unit.stats.training_time}</span></div>
+                    <div><strong>Speed:</strong> <span style="color: #ffaa44;">${unit.stats.speed}</span></div>
+                    <div style="margin-top: 10px;">
+                        ${unit.stats.attack_vs_spies ? 
+                            `<div><strong>⚔️ Attack vs Spies:</strong> <span style="color: #ff4444;">${unit.stats.attack_vs_spies}</span></div>
+                             <div><strong>🛡️ Defense vs Spies:</strong> <span style="color: #44ff44;">${unit.stats.defense_vs_spies}</span></div>` :
+                            `<div><strong>⚔️ vs Army:</strong> <span style="color: #ff4444;">${unit.stats.attack_vs_army}</span> | <strong>vs Knights:</strong> <span style="color: #ff4444;">${unit.stats.attack_vs_knights}</span></div>
+                             <div><strong>🛡️ vs Army:</strong> <span style="color: #44ff44;">${unit.stats.defense_vs_army}</span> | <strong>vs Knights:</strong> <span style="color: #44ff44;">${unit.stats.defense_vs_knights}</span></div>`
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tactical Information -->
+            <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid #333; border-radius: 6px; padding: 15px;">
+                <h4 style="color: #00aaff; margin-bottom: 15px;">🎯 Tactical Information</h4>
+                <div style="font-size: 11px; line-height: 1.6; white-space: pre-line;">${unit.tactical_info}</div>
+            </div>
+        </div>
+        
+        <!-- Building Synergies -->
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid #333; border-radius: 6px; padding: 15px;">
+            <h4 style="color: #ffaa44; margin-bottom: 15px;">🏰 Building Synergies</h4>
+            <div style="font-size: 12px; line-height: 1.8; white-space: pre-line;">${unit.buildings_synergy}</div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    
+    // Show modal
+    document.getElementById('unit-info-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeUnitModal() {
+    document.getElementById('unit-info-modal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function showRecruitmentTable() {
+    document.querySelector('.dashboard-panel:nth-child(3)').scrollIntoView({ behavior: 'smooth' });
+}
+
+function selectTerritory(territoryId) {
+    // Remove selection from all territories
+    document.querySelectorAll('.territory-option').forEach(option => {
+        option.style.borderColor = '#333';
+        option.style.background = 'rgba(255, 255, 255, 0.02)';
+    });
+    
+    // Highlight selected territory
+    const selectedOption = document.querySelector(`[data-territory-id="${territoryId}"]`);
+    selectedOption.style.borderColor = '#44ff44';
+    selectedOption.style.background = 'rgba(68, 255, 68, 0.1)';
+    
+    // Update hidden input
+    document.getElementById('selected-territory').value = territoryId;
+}
+
+function trainUnits(unitType) {
+    const selectedTerritoryId = document.getElementById('selected-territory').value;
+    const input = document.querySelector(`[data-unit-type="${unitType}"] .unit-input`);
+    const amount = parseInt(input.value) || 0;
+    
+    if (amount <= 0) {
+        NovaGame.showNotification('Please enter a valid number of units to recruit!', 'error');
+        return;
+    }
+    
+    if (!selectedTerritoryId) {
+        NovaGame.showNotification('Please select a territory for deployment!', 'error');
+        return;
+    }
+    
+    // Calculate cost (per unit now)
+    const cost = unitCosts[unitType];
+    const totalCost = {
+        energy: cost.energy * amount,
+        minerals: cost.minerals * amount,
+        food: cost.food * amount
+    };
+    
+    // Check if player can afford
+    const empireResources = {
+        energy: {{ empire.energy }},
+        minerals: {{ empire.minerals }},
+        food: {{ empire.food }}
+    };
+    
+    if (empireResources.energy < totalCost.energy || 
+        empireResources.minerals < totalCost.minerals || 
+        empireResources.food < totalCost.food) {
+        NovaGame.showNotification(`Insufficient resources! Need: ⚡${totalCost.energy} ⛏${totalCost.minerals} 🌾${totalCost.food}`, 'error');
+        return;
+    }
+    
+    // Send recruitment request
+    fetch('/game/api/recruit/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            territory_id: parseInt(selectedTerritoryId),
+            unit_type: unitType,
+            size: amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            input.value = '0';
+            
+            // Immediately show progress bar in the recruitment cell
+            const unitCell = document.querySelector(`[data-unit-type="${unitType}"]`);
+            const unitStats = unitCell.querySelector('.unit-stats');
+            
+            // Create new progress bar for this batch
+            const progressCell = document.createElement('div');
+            progressCell.className = 'recruitment-progress-cell';
+            progressCell.setAttribute('data-batch-id', data.batch_id);
+            progressCell.style.cssText = 'margin: 5px 0; padding: 6px; background: rgba(0, 170, 255, 0.15); border: 1px solid #00aaff; border-radius: 3px;';
+            
+            progressCell.innerHTML = `
+                <div style="font-size: 9px; color: #00aaff; margin-bottom: 2px;">🔄 RECRUITING</div>
+                <div style="font-size: 9px; color: #44ff44;">
+                    <span class="units-completed">0</span> / <span class="units-total">${amount}</span> units
+                </div>
+                <div style="font-size: 9px; color: #ffaa44;">
+                    <span class="units-remaining">${amount}</span> remaining
+                </div>
+                <div style="background: #333; height: 3px; border-radius: 1px; overflow: hidden; margin: 2px 0;">
+                    <div class="progress-bar" style="background: linear-gradient(90deg, #00aaff, #44ff44); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <div class="progress-text" style="font-size: 8px; color: #aaa;">0.0% complete</div>
+                <div class="time-remaining" style="font-size: 8px; color: #00aaff;">${Math.floor(data.recruitment_time)}m remaining</div>
+            `;
+            
+            // Insert before the input field
+            const inputField = unitStats.querySelector('.unit-input');
+            unitStats.insertBefore(progressCell, inputField);
+            
+            // Don't reload page - let the real-time updates handle the progress
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        NovaGame.showNotification('Recruitment failed: ' + error.message, 'error');
+    });
+}
+
+function instantTrainUnits(unitType) {
+    const selectedTerritoryId = document.getElementById('selected-territory').value;
+    const input = document.querySelector(`[data-unit-type="${unitType}"] .unit-input`);
+    const amount = parseInt(input.value) || 0;
+    
+    // Get player gold with fallback
+    const goldElement = document.getElementById('player-gold');
+    const playerGold = goldElement ? parseInt(goldElement.textContent) || 0 : 0;
+    
+    if (amount <= 0) {
+        NovaGame.showNotification('Please enter a valid number of units to recruit!', 'error');
+        return;
+    }
+    if (!selectedTerritoryId) {
+        NovaGame.showNotification('Please select a territory for deployment!', 'error');
+        return;
+    }
+    if (playerGold < 10) {
+        NovaGame.showNotification('You need at least 10 gold for instant recruitment!', 'error');
+        return;
+    }
+    
+    // Calculate instant cost (3x normal cost)
+    const cost = unitCosts[unitType];
+    const instantCost = {
+        energy: cost.energy * amount * 3,
+        minerals: cost.minerals * amount * 3,
+        food: cost.food * amount * 3
+    };
+    
+    // Check if player can afford
+    const empireResources = {
+        energy: {{ empire.energy }},
+        minerals: {{ empire.minerals }},
+        food: {{ empire.food }}
+    };
+    
+    if (empireResources.energy < instantCost.energy || 
+        empireResources.minerals < instantCost.minerals || 
+        empireResources.food < instantCost.food) {
+        NovaGame.showNotification(`Insufficient resources for instant recruitment! Need: ⚡${instantCost.energy} ⛏${instantCost.minerals} 🌾${instantCost.food}`, 'error');
+        return;
+    }
+    
+    // Confirm instant recruitment (since it's expensive)
+    if (!confirm(`Instant recruitment costs 3x normal price!\n\nCost: ⚡${instantCost.energy} ⛏${instantCost.minerals} 🌾${instantCost.food}\n\nAre you sure you want to instantly recruit ${amount} units?`)) {
+        return;
+    }
+    
+    // Send instant recruitment request
+    fetch('/game/api/instant-recruit/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            territory_id: parseInt(selectedTerritoryId),
+            unit_type: unitType,
+            size: amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            input.value = '0';
+            
+            // Update gold display if element exists
+            const goldElement = document.getElementById('player-gold');
+            if (goldElement && data.gold_remaining !== undefined) {
+                goldElement.textContent = data.gold_remaining;
+            }
+            
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        NovaGame.showNotification('Instant recruitment failed: ' + error.message, 'error');
+    });
+}
+
+function selectForAttack(armyId) {
+    if (!selectedArmies.includes(armyId)) {
+        selectedArmies.push(armyId);
+        updateAttackSelection();
+    }
+}
+
+function updateAttackSelection() {
+    const inputs = document.querySelectorAll('.army-send-input');
+    const listElement = document.getElementById('attack-force-list');
+    const attackForm = document.getElementById('attack-form');
+    const totalPowerDiv = document.getElementById('total-attack-power');
+    const totalPowerValue = document.getElementById('total-power-value');
+    
+    let totalUnits = 0;
+    let totalPower = 0;
+    let unitBreakdown = [];
+    
+    inputs.forEach(input => {
+        const units = parseInt(input.value) || 0;
+        if (units > 0) {
+            const armyType = input.dataset.armyType;
+            const combatPerUnit = parseFloat(input.dataset.combatPerUnit) || 0;
+            const combatPower = units * combatPerUnit;
+            
+            totalUnits += units;
+            totalPower += combatPower;
+            
+            // Format unit type for display
+            const displayName = armyType.charAt(0).toUpperCase() + armyType.slice(1).replace('_', ' ');
+            unitBreakdown.push(`${units} ${displayName}`);
+        }
+    });
+    
+    if (totalUnits > 0) {
+        listElement.innerHTML = `Selected: ${unitBreakdown.join(', ')} (${totalUnits} total units)`;
+        listElement.style.color = '#44ff44';
+        attackForm.style.display = 'block';
+        totalPowerDiv.style.display = 'block';
+        totalPowerValue.textContent = Math.floor(totalPower).toLocaleString();
+    } else {
+        listElement.innerHTML = 'No units selected for attack.';
+        listElement.style.color = '#aaa';
+        attackForm.style.display = 'none';
+        totalPowerDiv.style.display = 'none';
+    }
+}
+
+function clearAttackSelection() {
+    const inputs = document.querySelectorAll('.army-send-input');
+    inputs.forEach(input => {
+        input.value = 0;
+    });
+    updateAttackSelection();
+}
+
+// Form handling
+document.addEventListener('DOMContentLoaded', function() {
+    // Attack form
+    const attackForm = document.getElementById('attack-form');
+    if (attackForm) {
+        attackForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const target_x = parseInt(formData.get('target_x'));
+            const target_y = parseInt(formData.get('target_y'));
+            
+            if (isNaN(target_x) || isNaN(target_y)) {
+                NovaGame.showNotification('Please enter valid coordinates!', 'error');
+                return;
+            }
+            
+            // Collect attack units from input fields
+            const attackUnits = {};
+            const inputs = document.querySelectorAll('.army-send-input');
+            let totalUnits = 0;
+            
+            inputs.forEach(input => {
+                const units = parseInt(input.value) || 0;
+                if (units > 0) {
+                    const armyType = input.dataset.armyType;
+                    attackUnits[armyType] = (attackUnits[armyType] || 0) + units;
+                    totalUnits += units;
+                }
+            });
+            
+            if (totalUnits === 0) {
+                NovaGame.showNotification('Please select units to attack with!', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/game/api/launch-attack/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        target_x: target_x,
+                        target_y: target_y,
+                        attack_units: attackUnits
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    NovaGame.showNotification('Attack launched successfully!', 'success');
+                    clearAttackSelection();
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    NovaGame.showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                NovaGame.showNotification('Attack failed: ' + error.message, 'error');
+            }
+        });
+    }
+    
+    // Update input costs in real-time
+    document.querySelectorAll('.unit-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const unitType = this.closest('.unit-recruitment-cell').dataset.unitType;
+            const amount = parseInt(this.value) || 0;
+            const cost = unitCosts[unitType];
+            
+            if (amount > 0) {
+                const totalCost = {
+                    energy: cost.energy * amount,
+                    minerals: cost.minerals * amount,
+                    food: cost.food * amount
+                };
+                
+                const statsDiv = this.closest('.unit-stats').querySelector('div');
+                statsDiv.innerHTML = `
+                    Total Cost: ${totalCost.energy}⚡ ${totalCost.minerals}⛏ ${totalCost.food}🌾<br>
+                    Units: ${amount}
+                `;
+            } else {
+                const unitInfo = {
+                    'infantry': 'Cost: 1⚡ 1⛏ 1🌾<br>Time: 20 seconds/unit<br><span style="color: #ff4444;">⚔️ 10 vs Army, 5 vs Knights</span><br><span style="color: #44ff44;">🛡️ 15 vs Army, 8 vs Knights</span>',
+                    'archers': 'Cost: 2⚡ 1⛏ 1🌾<br>Time: 30 seconds/unit<br><span style="color: #ff4444;">⚔️ 15 vs Army, 12 vs Knights</span><br><span style="color: #44ff44;">🛡️ 8 vs Army, 10 vs Knights</span>',
+                    'spearmen': 'Cost: 2⚡ 2⛏ 1🌾<br>Time: 40 seconds/unit<br><span style="color: #ff4444;">⚔️ 8 vs Army, 20 vs Knights</span><br><span style="color: #44ff44;">🛡️ 12 vs Army, 25 vs Knights</span>',
+                    'heavy_knights': 'Cost: 8⚡ 12⛏ 4🌾<br>Time: 3 minutes/unit<br><span style="color: #ff4444;">⚔️ 40 vs Army, 25 vs Knights</span><br><span style="color: #44ff44;">🛡️ 20 vs Army, 30 vs Knights</span>',
+                    'royal_knights': 'Cost: 15⚡ 20⛏ 8🌾<br>Time: 5 minutes/unit<br><span style="color: #ff4444;">⚔️ 50 vs Army, 35 vs Knights</span><br><span style="color: #44ff44;">🛡️ 25 vs Army, 40 vs Knights</span>',
+                    'spies': 'Cost: 10⚡ 5⛏ 3🌾<br>Time: 2 minutes/unit<br><span style="color: #ff4444;">⚔️ 0 vs Army/Knights, 25 vs Spies</span><br><span style="color: #44ff44;">🛡️ 0 vs Army/Knights, 15 vs Spies</span><br><span style="color: #aa44ff;">🎯 Requires Intelligence Hub</span>',
+                    // Backward compatibility
+                    'tanks': 'Cost: 2⚡ 1⛏ 1🌾<br>Time: 30 seconds/unit<br><span style="color: #ff4444;">⚔️ 15 vs Army, 12 vs Knights</span><br><span style="color: #44ff44;">🛡️ 8 vs Army, 10 vs Knights</span>',
+                    'aircraft': 'Cost: 2⚡ 2⛏ 1🌾<br>Time: 40 seconds/unit<br><span style="color: #ff4444;">⚔️ 8 vs Army, 20 vs Knights</span><br><span style="color: #44ff44;">🛡️ 12 vs Army, 25 vs Knights</span>',
+                    'naval': 'Cost: 8⚡ 12⛏ 4🌾<br>Time: 3 minutes/unit<br><span style="color: #ff4444;">⚔️ 40 vs Army, 25 vs Knights</span><br><span style="color: #44ff44;">🛡️ 20 vs Army, 30 vs Knights</span>',
+                    'cyber': 'Cost: 15⚡ 20⛏ 8🌾<br>Time: 5 minutes/unit<br><span style="color: #ff4444;">⚔️ 50 vs Army, 35 vs Knights</span><br><span style="color: #44ff44;">🛡️ 25 vs Army, 40 vs Knights</span>'
+                };
+                
+                const statsDiv = this.closest('.unit-stats').querySelector('div');
+                statsDiv.innerHTML = unitInfo[unitType];
+            }
+        });
+    });
+    
+    // Initialize first territory as selected
+    if (document.querySelector('.territory-option')) {
+        const firstTerritory = document.querySelector('.territory-option');
+        const territoryId = firstTerritory.dataset.territoryId;
+        selectTerritory(territoryId);
+    }
+    
+    // Start real-time recruitment progress updates
+    startRecruitmentUpdates();
+    
+    // Start real-time attack timer updates
+    startAttackTimerUpdates();
+});
+
+// Close unit modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('unit-info-modal');
+    if (event.target === modal) {
+        closeUnitModal();
+    }
+});
+
+// Close unit modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeUnitModal();
+    }
+});
+
+// Real-time recruitment progress update system
+function startRecruitmentUpdates() {
+    // Update recruitment progress every 3 seconds
+    setInterval(updateRecruitmentProgress, 3000);
+    
+    // Initial update
+    updateRecruitmentProgress();
+}
+
+async function updateRecruitmentProgress() {
+    try {
+        const response = await fetch('/game/api/update-recruitment/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update each recruiting batch
+            data.recruiting_batches.forEach(batch => {
+                updateBatchProgressBar(batch);
+            });
+            
+            // Check if any recruitment completed (but don't reload page)
+            const completedBatches = data.recruiting_batches.filter(batch => batch.progress >= 100);
+            if (completedBatches.length > 0) {
+                // Show completion notification
+                completedBatches.forEach(batch => {
+                    NovaGame.showNotification(`${batch.unit_type} recruitment completed!`, 'success');
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to update recruitment progress:', error);
+    }
+}
+
+function updateArmyProgressBar(army) {
+    // Find the specific army card by its data-army-id (in Available Military Forces section)
+    const armyCard = document.querySelector(`[data-army-id="${army.army_id}"]`);
+    
+    if (armyCard) {
+        // Update the available units count
+        const armySizeSpan = armyCard.querySelector('.army-size');
+        if (armySizeSpan) {
+            armySizeSpan.textContent = army.current_size;
+        }
+        
+        // Update units remaining to recruit
+        const unitsRemainingSpan = armyCard.querySelector('.units-remaining');
+        if (unitsRemainingSpan) {
+            unitsRemainingSpan.textContent = army.units_remaining || Math.max(0, army.target_size - army.current_size);
+        }
+        
+        // Update progress bar
+        const progressBar = armyCard.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${army.progress}%`;
+        }
+        
+        // Update progress text
+        const progressText = armyCard.querySelector('.progress-text');
+        if (progressText) {
+            if (army.is_complete) {
+                progressText.textContent = 'Completed!';
+            } else {
+                progressText.textContent = `${army.progress.toFixed(1)}% complete`;
+            }
+        }
+        
+        // Update time remaining
+        const timeDisplay = armyCard.querySelector('.time-remaining');
+        if (timeDisplay) {
+            if (army.is_complete || army.time_remaining <= 0) {
+                timeDisplay.textContent = 'Ready!';
+            } else {
+                const minutes = Math.floor(army.time_remaining / 60);
+                const seconds = Math.floor(army.time_remaining % 60);
+                const timeText = minutes > 0 ? `${minutes}m ${seconds}s remaining` : `${seconds}s remaining`;
+                timeDisplay.textContent = timeText;
+            }
+        }
+        
+        // If recruitment is complete, hide the recruitment progress section after a short delay
+        if (army.is_complete) {
+            setTimeout(() => {
+                const recruitmentDiv = armyCard.querySelector('.recruitment-progress');
+                if (recruitmentDiv) {
+                    recruitmentDiv.style.transition = 'opacity 0.5s ease-out';
+                    recruitmentDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        recruitmentDiv.style.display = 'none';
+                    }, 500);
+                }
+            }, 2000); // Show "Completed!" for 2 seconds before hiding
+        }
+    }
+    
+    // Also find and update recruitment progress cells in the recruitment section
+    const recruitmentProgressCell = document.querySelector(`.recruitment-progress-cell[data-army-id="${army.army_id}"]`);
+    
+    if (recruitmentProgressCell) {
+        // Update units remaining to recruit
+        const unitsRemainingSpan = recruitmentProgressCell.querySelector('.units-remaining');
+        if (unitsRemainingSpan) {
+            unitsRemainingSpan.textContent = army.units_remaining || Math.max(0, army.target_size - army.current_size);
+        }
+        
+        // Update progress bar
+        const progressBar = recruitmentProgressCell.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${army.progress}%`;
+        }
+        
+        // Update progress text
+        const progressText = recruitmentProgressCell.querySelector('.progress-text');
+        if (progressText) {
+            if (army.is_complete) {
+                progressText.textContent = 'Completed!';
+            } else {
+                progressText.textContent = `${army.progress.toFixed(1)}% complete`;
+            }
+        }
+        
+        // Update time remaining
+        const timeDisplay = recruitmentProgressCell.querySelector('.time-remaining');
+        if (timeDisplay) {
+            if (army.is_complete || army.time_remaining <= 0) {
+                timeDisplay.textContent = 'Ready!';
+            } else {
+                const minutes = Math.floor(army.time_remaining / 60);
+                const seconds = Math.floor(army.time_remaining % 60);
+                const timeText = minutes > 0 ? `${minutes}m ${seconds}s remaining` : `${seconds}s remaining`;
+                timeDisplay.textContent = timeText;
+            }
+        }
+        
+        // If recruitment is complete, hide the recruitment progress cell after a short delay
+        if (army.is_complete) {
+            setTimeout(() => {
+                recruitmentProgressCell.style.transition = 'opacity 0.5s ease-out';
+                recruitmentProgressCell.style.opacity = '0';
+                setTimeout(() => {
+                    recruitmentProgressCell.style.display = 'none';
+                }, 500);
+            }, 3000); // Show "Completed!" for 3 seconds before hiding
+        }
+    }
+}
+
+// Real-time attack timer update system
+function startAttackTimerUpdates() {
+    // Update attack timers every second
+    setInterval(updateAttackTimers, 1000);
+    
+    // Initial update
+    updateAttackTimers();
+}
+
+function updateAttackTimers() {
+    const now = new Date();
+    
+    // Update all attack cards
+    document.querySelectorAll('.attack-card').forEach(card => {
+        const timeRemainingDiv = card.querySelector('.time-remaining');
+        const arrivalTimeSpan = card.querySelector('[data-target-time]');
+        
+        if (arrivalTimeSpan && timeRemainingDiv) {
+            const targetTime = new Date(arrivalTimeSpan.dataset.targetTime);
+            const timeDiff = targetTime - now;
+            
+            if (timeDiff > 0) {
+                const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+                
+                let timeString = '';
+                if (hours > 0) {
+                    timeString = `${hours}h ${minutes}m ${seconds}s`;
+                } else if (minutes > 0) {
+                    timeString = `${minutes}m ${seconds}s`;
+                } else {
+                    timeString = `${seconds}s`;
+                }
+                
+                timeRemainingDiv.textContent = `⏰ ${timeString}`;
+            } else {
+                timeRemainingDiv.textContent = '⏰ Arrived!';
+                timeRemainingDiv.style.color = '#44ff44';
+            }
+        }
+    });
+}
+
+function updateBatchProgressBar(batch) {
+    // Find and update recruitment progress cells in the recruitment section
+    const recruitmentProgressCell = document.querySelector(`.recruitment-progress-cell[data-batch-id="${batch.batch_id}"]`);
+    
+    if (recruitmentProgressCell) {
+        // Update based on batch status
+        if (batch.status === 'active') {
+            // Update units completed display
+            const unitsCompletedSpan = recruitmentProgressCell.querySelector('.units-completed');
+            if (unitsCompletedSpan) {
+                unitsCompletedSpan.textContent = batch.units_completed || 0;
+            }
+            
+            // Update units remaining to recruit
+            const unitsRemainingSpan = recruitmentProgressCell.querySelector('.units-remaining');
+            if (unitsRemainingSpan) {
+                unitsRemainingSpan.textContent = batch.units_remaining;
+            }
+            
+            // Update progress bar
+            const progressBar = recruitmentProgressCell.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${batch.progress}%`;
+                progressBar.style.background = 'linear-gradient(90deg, #00aaff, #44ff44)';
+            }
+            
+            // Update progress text
+            const progressText = recruitmentProgressCell.querySelector('.progress-text');
+            if (progressText) {
+                if (batch.is_complete) {
+                    progressText.textContent = 'Completed!';
+                } else {
+                    progressText.textContent = `${batch.progress.toFixed(1)}% complete`;
+                }
+            }
+            
+            // Update time remaining
+            const timeDisplay = recruitmentProgressCell.querySelector('.time-remaining');
+            if (timeDisplay) {
+                if (batch.is_complete || batch.time_remaining <= 0) {
+                    timeDisplay.textContent = 'Ready!';
+                } else {
+                    const minutes = Math.floor(batch.time_remaining / 60);
+                    const seconds = Math.floor(batch.time_remaining % 60);
+                    const timeText = minutes > 0 ? `${minutes}m ${seconds}s remaining` : `${seconds}s remaining`;
+                    timeDisplay.textContent = timeText;
+                }
+            }
+        } else if (batch.status === 'queued') {
+            // Update queue position and estimated time for queued batches
+            const queuePositionDiv = recruitmentProgressCell.querySelector('div:nth-child(2)');
+            if (queuePositionDiv) {
+                queuePositionDiv.textContent = `Position ${batch.queue_position + 1} in queue`;
+            }
+            
+            // Update estimated total time
+            const estimatedTimeDiv = recruitmentProgressCell.querySelector('.estimated-time');
+            if (estimatedTimeDiv) {
+                const estimatedMinutes = Math.floor(batch.estimated_total_time / 60);
+                estimatedTimeDiv.textContent = `Est. ${estimatedMinutes}m total`;
+            }
+            
+            // Keep progress bar at 0% for queued items
+            const progressBar = recruitmentProgressCell.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.style.background = '#666';
+            }
+        }
+        
+        // If recruitment is complete, hide the recruitment progress cell after a short delay
+        if (batch.is_complete) {
+            setTimeout(() => {
+                recruitmentProgressCell.style.transition = 'opacity 0.5s ease-out';
+                recruitmentProgressCell.style.opacity = '0';
+                setTimeout(() => {
+                    recruitmentProgressCell.remove();
+                }, 500);
+            }, 3000); // Show "Completed!" for 3 seconds before hiding
+        }
+    }
+}
+</script>
+
+<style>
+.unit-recruitment-cell {
+    border: 1px solid #333;
+    padding: 12px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+    min-height: 200px;
+    font-size: 10px;
+}
+
+.unit-recruitment-cell:hover {
+    background: rgba(68, 255, 68, 0.05);
+    border-color: #44ff44;
+}
+
+.unit-header {
+    margin-bottom: 10px;
+}
+
+.unit-stats {
+    font-size: 11px;
+}
+
+.unit-input {
+    width: 100%;
+    padding: 5px;
+    margin: 8px 0;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 12px;
+}
+
+.unit-input:focus {
+    border-color: #44ff44;
+    outline: none;
+}
+
+.train-button {
+    width: 100%;
+    padding: 6px;
+    background: linear-gradient(145deg, #2a4a2a, #1a3a1a);
+    border: 1px solid #44ff44;
+    color: #44ff44;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.train-button:hover {
+    background: linear-gradient(145deg, #3a5a3a, #2a4a2a);
+    transform: scale(1.05);
+}
+
+.train-button:active {
+    transform: scale(0.95);
+}
+
+.instant-train-button {
+    background: linear-gradient(145deg, #ffaa44, #ff8844);
+    border: 1px solid #ffaa44;
+    color: #000;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.instant-train-button:hover {
+    background: linear-gradient(145deg, #ffbb55, #ff9955);
+    border-color: #ffbb55;
+    transform: scale(1.05);
+}
+
+.instant-train-button:active {
+    transform: scale(0.95);
+}
+
+.territory-option:hover {
+    border-color: #44ff44 !important;
+    background: rgba(68, 255, 68, 0.05) !important;
+    transform: scale(1.02);
+}
+
+.territory-option.selected {
+    border-color: #44ff44 !important;
+    background: rgba(68, 255, 68, 0.1) !important;
+}
+
+@media (max-width: 768px) {
+    .unit-recruitment-cell {
+        min-width: 150px;
+    }
+    
+    .territory-option {
+        min-width: 200px;
+    }
+    
+    /* On mobile, make recruitment grid 3 columns instead of 6 */
+    div[style*="grid-template-columns: repeat(6, 1fr)"] {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* On very small screens, make recruitment grid 2 columns */
+    div[style*="grid-template-columns: repeat(6, 1fr)"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .unit-recruitment-cell {
+        min-width: 120px;
+        min-height: 180px;
+    }
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    margin: 8% auto;
+    padding: 0;
+    border: 2px solid #44ff44;
+    border-radius: 12px;
+    width: 70%;
+    max-width: 600px;
+    max-height: 70vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 0 20px rgba(68, 255, 68, 0.4);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    z-index: 1001;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover,
+.close:focus {
+    color: #44ff44;
+    text-decoration: none;
+}
+
+.unit-modal-header {
+    background: linear-gradient(145deg, #44ff44, #22cc22);
+    color: #000;
+    padding: 12px;
+    text-align: center;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+}
+
+.unit-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.unit-modal-header .unit-icon {
+    font-size: 28px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.unit-modal-body {
+    padding: 20px;
+    color: #fff;
+}
+
+.unit-lore {
+    background: rgba(68, 255, 68, 0.1);
+    border-left: 3px solid #44ff44;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+    line-height: 1.4;
+    font-size: 13px;
+}
+
+.unit-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    background: rgba(68, 68, 68, 0.3);
+    border: 1px solid #44ff44;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+}
+
+.stat-card h4 {
+    color: #44ff44;
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.stat-card .stat-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.defense-breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.defense-item {
+    background: rgba(68, 68, 255, 0.2);
+    border: 1px solid #4444ff;
+    border-radius: 3px;
+    padding: 4px;
+    text-align: center;
+}
+
+.defense-label {
+    color: #aaa;
+    font-size: 8px;
+    margin-bottom: 2px;
+}
+
+.defense-value {
+    color: #4444ff;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.unit-abilities {
+    background: rgba(255, 170, 0, 0.1);
+    border: 1px solid #ffaa00;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.unit-abilities h3 {
+    color: #ffaa00;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.ability-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 6px;
+    background: rgba(255, 170, 0, 0.1);
+    border-radius: 4px;
+}
+
+.ability-icon {
+    font-size: 16px;
+    margin-right: 8px;
+    width: 24px;
+    text-align: center;
+}
+
+.ability-text {
+    flex: 1;
+    line-height: 1.3;
+    font-size: 12px;
+}
+
+.strategic-advice {
+    background: rgba(68, 68, 255, 0.1);
+    border: 1px solid #4444ff;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.strategic-advice h3 {
+    color: #4444ff;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.strategic-advice ul {
+    margin: 0;
+    padding-left: 15px;
+}
+
+.strategic-advice li {
+    margin-bottom: 6px;
+    line-height: 1.3;
+    font-size: 12px;
+}
+
+.unit-costs {
+    display: flex;
+    justify-content: space-around;
+    margin: 12px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cost-item {
+    background: rgba(255, 68, 255, 0.2);
+    border: 1px solid #ff44ff;
+    border-radius: 4px;
+    padding: 6px 10px;
+    text-align: center;
+    min-width: 60px;
+}
+
+.cost-item .cost-icon {
+    font-size: 16px;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.cost-item .cost-value {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .unit-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .unit-costs {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+// Unit data with lore and strategic information
+const unitData = {
+    infantry: {
+        name: "Infantry",
+        icon: "🪖",
+        lore: "The backbone of any army, these disciplined soldiers have been the foundation of military might since the dawn of civilization. Trained in the art of close combat, they form the shield wall that protects the realm from invaders. Though not the most glamorous of warriors, their reliability and versatility make them indispensable in any military campaign.",
+        stats: {
+            attack: 12,
+            defense: "15/8/12/6/4/10",
+            storage: 40,
+            speed: 6,
+            cost: "3⚡ 2⛏️ 1🌾",
+            time: "45 seconds"
+        },
+        abilities: [
+            { icon: "⚔️", text: "Balanced combat unit - effective against all unit types" },
+            { icon: "🛡️", text: "Strong defense against infantry and spearmen" },
+            { icon: "📦", text: "Moderate storage capacity for carrying loot" },
+            { icon: "⚡", text: "Fast training time allows for quick army building" }
+        ],
+        strategy: [
+            "Use as your primary defensive force against infantry attacks",
+            "Excellent for protecting archers and siege units",
+            "Cost-effective for early game expansion",
+            "Combine with spearmen to create a strong defensive line"
+        ]
+    },
+    archers: {
+        name: "Archers",
+        icon: "🏹",
+        lore: "Masters of the bow, these skilled marksmen rain death upon their enemies from a safe distance. Their arrows can pierce armor and strike fear into the hearts of charging cavalry. Though vulnerable in close combat, their ability to attack from range makes them a crucial component of any well-balanced army.",
+        stats: {
+            attack: 18,
+            defense: "6/12/8/4/3/8",
+            storage: 35,
+            speed: 7,
+            cost: "4⚡ 3⛏️ 2🌾",
+            time: "60 seconds"
+        },
+        abilities: [
+            { icon: "🏹", text: "Highest attack power among basic units" },
+            { icon: "🎯", text: "Ranged attacks - can attack without taking damage" },
+            { icon: "⚡", text: "Fast movement speed for tactical positioning" },
+            { icon: "💀", text: "Devastating against unarmored units" }
+        ],
+        strategy: [
+            "Keep them behind infantry for protection",
+            "Use to counter enemy archers and light units",
+            "Essential for raiding and hit-and-run tactics",
+            "Vulnerable to cavalry charges - always protect them"
+        ]
+    },
+    spearmen: {
+        name: "Spearmen",
+        icon: "🔱",
+        lore: "These disciplined warriors wield long spears that can stop charging cavalry in their tracks. Their formation fighting and anti-cavalry training make them the bane of mounted units. Though slower than other infantry, their specialized training and longer reach give them a decisive advantage against cavalry forces.",
+        stats: {
+            attack: 10,
+            defense: "14/10/16/20/18/12",
+            storage: 45,
+            speed: 5,
+            cost: "3⚡ 4⛏️ 2🌾",
+            time: "75 seconds"
+        },
+        abilities: [
+            { icon: "🐎", text: "Anti-cavalry specialists - devastating vs knights" },
+            { icon: "🛡️", text: "Excellent defense against all mounted units" },
+            { icon: "📏", text: "Long reach weapons for formation fighting" },
+            { icon: "⚔️", text: "Strong defensive unit for protecting territory" }
+        ],
+        strategy: [
+            "Essential for defending against cavalry raids",
+            "Place them in front of archers for protection",
+            "Use to counter heavy and royal knights",
+            "Slow speed means they need strategic positioning"
+        ]
+    },
+    heavy_knights: {
+        name: "Heavy Knights",
+        icon: "🐎",
+        lore: "Clad in gleaming armor and mounted on powerful steeds, these elite warriors represent the pinnacle of medieval military technology. Their combination of speed, power, and protection makes them the terror of the battlefield. Though expensive to train and maintain, their ability to break enemy lines and pursue fleeing foes is unmatched.",
+        stats: {
+            attack: 25,
+            defense: "8/6/4/12/8/6",
+            storage: 80,
+            speed: 9,
+            cost: "8⚡ 6⛏️ 4🌾",
+            time: "120 seconds"
+        },
+        abilities: [
+            { icon: "⚡", text: "High speed for rapid deployment and raiding" },
+            { icon: "💪", text: "Powerful attack against infantry and archers" },
+            { icon: "📦", text: "Large storage capacity for carrying loot" },
+            { icon: "🛡️", text: "Armored protection against light attacks" }
+        ],
+        strategy: [
+            "Perfect for raiding enemy territories",
+            "Use to flank and encircle enemy forces",
+            "Excellent for pursuing and destroying retreating units",
+            "Vulnerable to spearmen - avoid direct confrontation"
+        ]
+    },
+    royal_knights: {
+        name: "Royal Knights",
+        icon: "👑",
+        lore: "The finest warriors in the realm, these legendary knights are the embodiment of martial excellence. Trained from birth in the arts of war and mounted on the finest steeds, they inspire both fear and awe. Their presence on the battlefield can turn the tide of any conflict, making them the ultimate symbol of military might.",
+        stats: {
+            attack: 35,
+            defense: "10/8/6/15/20/8",
+            storage: 100,
+            speed: 10,
+            cost: "15⚡ 12⛏️ 8🌾",
+            time: "180 seconds"
+        },
+        abilities: [
+            { icon: "👑", text: "Elite unit with highest combat stats" },
+            { icon: "⚡", text: "Maximum speed for lightning-fast strikes" },
+            { icon: "💎", text: "Premium unit for end-game warfare" },
+            { icon: "📦", text: "Maximum storage capacity for massive raids" }
+        ],
+        strategy: [
+            "Reserve for critical battles and major offensives",
+            "Use to break through heavily defended positions",
+            "Perfect for decisive strikes against enemy capitals",
+            "Extremely expensive - use strategically and protect them"
+        ]
+    },
+    spies: {
+        name: "Spies",
+        icon: "🕵️",
+        lore: "Masters of stealth and deception, these shadowy operatives move unseen through enemy territory. Their ability to gather intelligence and strike from the shadows makes them invaluable for any ruler who wishes to know their enemy's plans. Though they cannot engage in conventional warfare, their information can be worth more than an entire army.",
+        stats: {
+            attack: 0,
+            defense: "2/2/2/2/2/5",
+            storage: 20,
+            speed: 12,
+            cost: "10⚡ 5⛏️ 15🌾",
+            time: "300 seconds"
+        },
+        abilities: [
+            { icon: "👻", text: "Invisible to regular units - only spies can detect them" },
+            { icon: "📊", text: "Gather intelligence on enemy forces and resources" },
+            { icon: "⚡", text: "Fastest unit for rapid reconnaissance" },
+            { icon: "🎭", text: "Can only attack and be attacked by other spies" }
+        ],
+        strategy: [
+            "Essential for gathering enemy intelligence",
+            "Use to scout enemy territories before attacks",
+            "Protect your own spies with counter-espionage",
+            "Cannot participate in regular combat - purely support unit"
+        ]
+    },
+    catapult: {
+        name: "Catapult",
+        icon: "🏰",
+        lore: "These massive siege engines represent the pinnacle of medieval engineering. Capable of hurling massive stones and flaming projectiles, they can reduce even the strongest fortifications to rubble. Though slow and vulnerable in direct combat, their ability to destroy buildings and fortifications makes them essential for any serious military campaign.",
+        stats: {
+            attack: 8,
+            defense: "3/3/3/3/3/1",
+            storage: 60,
+            speed: 2,
+            cost: "20⚡ 25⛏️ 10🌾",
+            time: "600 seconds"
+        },
+        abilities: [
+            { icon: "🏗️", text: "Building destroyer - essential for conquest" },
+            { icon: "💥", text: "Siege weapon - weak in direct combat" },
+            { icon: "🛡️", text: "Must be protected by other units" },
+            { icon: "⏰", text: "Long training time but devastating impact" }
+        ],
+        strategy: [
+            "Essential for late-game conquest and building destruction",
+            "Always protect with infantry and cavalry",
+            "Use in coordinated attacks with other units",
+            "Slow speed requires careful planning and timing"
+        ]
+    },
+    ram: {
+        name: "Ram",
+        icon: "🛡️",
+        lore: "These armored siege engines are designed specifically for breaking through walls and gates. Their reinforced structure allows them to absorb tremendous punishment while delivering devastating blows to fortifications. Though not as versatile as catapults, their ability to breach defenses makes them invaluable for any assault on fortified positions.",
+        stats: {
+            attack: 15,
+            defense: "5/4/6/4/4/2",
+            storage: 70,
+            speed: 3,
+            cost: "18⚡ 20⛏️ 8🌾",
+            time: "480 seconds"
+        },
+        abilities: [
+            { icon: "🚪", text: "Wall-breaker - specialized for breaching defenses" },
+            { icon: "🛡️", text: "Armored construction for survivability" },
+            { icon: "⚔️", text: "Better combat stats than catapults" },
+            { icon: "🎯", text: "Targets fortifications and gates specifically" }
+        ],
+        strategy: [
+            "Use to break through enemy walls and gates",
+            "More combat-effective than catapults",
+            "Essential for assaulting fortified cities",
+            "Protect with supporting units during sieges"
+        ]
+    },
+    hero: {
+        name: "Hero",
+        icon: "🧙",
+        lore: "A legendary warrior whose name will be sung in tales for generations to come. This unique leader possesses extraordinary abilities that can inspire entire armies and turn the tide of battle. Though only one can exist per player, their presence on the battlefield provides powerful bonuses to all allied units, making them the ultimate force multiplier.",
+        stats: {
+            attack: 20,
+            defense: "12/10/14/10/12/8",
+            storage: 50,
+            speed: 8,
+            cost: "50⚡ 40⛏️ 30🌾",
+            time: "900 seconds"
+        },
+        abilities: [
+            { icon: "⭐", text: "Unique unit - only one per player" },
+            { icon: "📈", text: "Gains experience and levels up over time" },
+            { icon: "🎖️", text: "Provides army bonuses and morale boost" },
+            { icon: "⚡", text: "High speed and balanced combat stats" }
+        ],
+        strategy: [
+            "Your most valuable unit - protect at all costs",
+            "Use to lead major offensives and inspire troops",
+            "Gains experience in battle - use regularly",
+            "Provides bonuses to all units in the same army"
+        ]
+    },
+    healer: {
+        name: "Healer",
+        icon: "🧑‍⚕️",
+        lore: "These compassionate warriors carry the knowledge of ancient healing arts, using their skills to mend wounds and restore fallen comrades to the fight. Though they cannot engage in combat themselves, their ability to revive fallen soldiers makes them invaluable for sustaining long campaigns and reducing casualties.",
+        stats: {
+            attack: 0,
+            defense: "8/6/8/5/5/6",
+            storage: 30,
+            speed: 6,
+            cost: "6⚡ 4⛏️ 8🌾",
+            time: "120 seconds"
+        },
+        abilities: [
+            { icon: "💚", text: "Revives 20% of casualties after battle" },
+            { icon: "🛡️", text: "Cannot attack but can defend themselves" },
+            { icon: "⚕️", text: "Support unit - enhances army sustainability" },
+            { icon: "📦", text: "Moderate storage for carrying medical supplies" }
+        ],
+        strategy: [
+            "Include in armies for long campaigns",
+            "Reduces overall casualties and losses",
+            "Cannot fight - always protect with combat units",
+            "Essential for maintaining army strength over time"
+        ]
+    },
+    scout_hawk: {
+        name: "Scout Hawk",
+        icon: "🦅",
+        lore: "These magnificent birds of prey have been trained to serve as the eyes of the army, soaring high above the battlefield to gather intelligence that no ground-based scout could ever obtain. Their ability to fly over enemy lines and bypass all defenses makes them the ultimate reconnaissance tool, providing commanders with crucial information about enemy movements and positions.",
+        stats: {
+            attack: 0,
+            defense: "0/0/0/0/0/0",
+            storage: 15,
+            speed: 15,
+            cost: "8⚡ 3⛏️ 12🌾",
+            time: "90 seconds"
+        },
+        abilities: [
+            { icon: "🦅", text: "Cannot be attacked by any ground unit" },
+            { icon: "👁️", text: "Provides deep reconnaissance capabilities" },
+            { icon: "⚡", text: "Fastest unit for rapid intelligence gathering" },
+            { icon: "🎯", text: "Bypasses all enemy defenses and spies" }
+        ],
+        strategy: [
+            "Use for advanced scouting and intelligence gathering",
+            "Cannot be stopped or intercepted by any unit",
+            "Essential for planning major offensives",
+            "Provides strategic advantage through information superiority"
+        ]
+    }
+};
+
+// Modal functionality
+const modal = document.getElementById("unitModal");
+const modalContent = document.getElementById("modalContent");
+const closeBtn = document.getElementsByClassName("close")[0];
+
+function showUnitModal(unitType) {
+    const unit = unitData[unitType];
+    if (!unit) return;
+    
+    modalContent.innerHTML = `
+        <div class="unit-modal-header">
+            <span class="unit-icon">${unit.icon}</span>
+            <h2>${unit.name}</h2>
+        </div>
+        <div class="unit-modal-body">
+            <div class="unit-lore">
+                ${unit.lore}
+            </div>
+            
+            <div class="unit-stats-grid">
+                <div class="stat-card">
+                    <h4>⚔️ Attack</h4>
+                    <div class="stat-value">${unit.stats.attack}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>🛡️ Defense</h4>
+                    <div class="stat-value">${unit.stats.defense.split('/')[0]}</div>
+                    <div class="defense-breakdown">
+                        <div class="defense-item">
+                            <div class="defense-label">🪖 Inf</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[0]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🏹 Arch</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[1]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🔱 Spear</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[2]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🐎 H.Knight</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[3]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">👑 R.Knight</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[4]}</div>
+                        </div>
+                        <div class="defense-item">
+                            <div class="defense-label">🕵️ Spy</div>
+                            <div class="defense-value">${unit.stats.defense.split('/')[5]}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h4>📦 Storage</h4>
+                    <div class="stat-value">${unit.stats.storage}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>🏃 Speed</h4>
+                    <div class="stat-value">${unit.stats.speed}</div>
+                </div>
+            </div>
+            
+            <div class="unit-costs">
+                <div class="cost-item">
+                    <span class="cost-icon">⚡</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[0]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">⛏️</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[1]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">🌾</span>
+                    <div class="cost-value">${unit.stats.cost.split(' ')[2]}</div>
+                </div>
+                <div class="cost-item">
+                    <span class="cost-icon">⏱️</span>
+                    <div class="cost-value">${unit.stats.time}</div>
+                </div>
+            </div>
+            
+            <div class="unit-abilities">
+                <h3>🎯 Special Abilities</h3>
+                ${unit.abilities.map(ability => `
+                    <div class="ability-item">
+                        <span class="ability-icon">${ability.icon}</span>
+                        <span class="ability-text">${ability.text}</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="strategic-advice">
+                <h3>📋 Strategic Advice</h3>
+                <ul>
+                    ${unit.strategy.map(strategy => `<li>${strategy}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = "block";
+}
+
+// Close modal when clicking the X
+closeBtn.onclick = function() {
+    modal.style.display = "none";
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape" && modal.style.display === "block") {
+        modal.style.display = "none";
+    }
+});
+</script>
+{% endblock %} 

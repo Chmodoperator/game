@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Access Denied - Communications{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                           COMMUNICATION ACCESS DENIED                              │
+    │                              SECURITY PROTOCOL                                     │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<div style="text-align: center; margin: 50px 0;">
+    <div style="font-size: 48px; margin-bottom: 20px;">🚫</div>
+    
+    <h2 style="color: #ff4444; margin-bottom: 20px;">ACCESS RESTRICTED</h2>
+    
+    <div style="font-family: monospace; font-size: 14px; max-width: 600px; margin: 0 auto;">
+        <div style="border: 1px solid #ff4444; padding: 20px; background-color: rgba(255, 68, 68, 0.1);">
+            You do not have permission to access the secure communication channel for:
+            <br><br>
+            <strong style="color: #ffaa44;">{{ alliance.name }}</strong>
+            <br><br>
+            This is a private alliance channel restricted to verified members only.
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <a href="{% url 'chat:global_chat' %}" class="form-button">[ ACCESS GLOBAL CHANNEL ]</a>
+        <a href="{% url 'game:diplomacy' %}" class="form-button">[ REQUEST ALLIANCE MEMBERSHIP ]</a>
+        <a href="{% url 'game:dashboard' %}" class="form-button">[ RETURN TO COMMAND CENTER ]</a>
+    </div>
+</div>
+
+<div style="margin-top: 50px; padding: 15px; border: 1px solid currentColor; background-color: rgba(255, 255, 255, 0.02); font-size: 12px; opacity: 0.8;">
+    <strong>SECURITY NOTICE:</strong><br>
+    • Alliance communications are encrypted and restricted to members<br>
+    • Unauthorized access attempts are logged and monitored<br>
+    • Contact alliance leadership for membership requests<br>
+    • Global communication channel remains available to all empires
+</div>
+{% endblock %} 

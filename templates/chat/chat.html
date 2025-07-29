@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Communications - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                           GALACTIC COMMUNICATION NETWORK                           │
+    │                        {% if chat_type == 'global' %}GLOBAL CHANNEL{% else %}{{ alliance.name|upper }} SECURE CHANNEL{% endif %}                        │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Chat Container -->
+<div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+        <!-- Messages will be populated by JavaScript -->
+        <div style="opacity: 0.6; text-align: center; margin: 20px 0;">
+            {% if chat_type == 'global' %}
+            📡 Connected to galactic communication network...
+            {% else %}
+            🔒 Secure alliance channel established...
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="chat-input-container">
+        <input type="text" id="chat-input" class="chat-input" 
+               placeholder="{% if chat_type == 'global' %}Broadcast to all empires...{% else %}Message alliance members...{% endif %}" 
+               maxlength="500">
+        <button id="chat-send" class="chat-send form-button">[ SEND ]</button>
+    </div>
+</div>
+
+<!-- Chat Controls -->
+<div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        {% if chat_type == 'alliance' %}
+        <a href="{% url 'chat:global_chat' %}" class="form-button">[ GLOBAL CHAT ]</a>
+        {% else %}
+        {% for user_alliance in empire.alliances.all %}
+        <a href="{% url 'chat:alliance_chat' user_alliance.id %}" class="form-button">[ {{ user_alliance.name|upper }} ]</a>
+        {% endfor %}
+        {% endif %}
+    </div>
+    
+    <div style="font-size: 12px; opacity: 0.7;">
+        {% if chat_type == 'global' %}
+        Public Channel - All messages visible to galaxy
+        {% else %}
+        Private Channel - {{ alliance.members.count }} members online
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chat Rules -->
+<div style="margin-top: 20px; padding: 10px; border: 1px solid currentColor; background-color: rgba(255, 255, 255, 0.02); font-size: 12px; opacity: 0.8;">
+    <strong>COMMUNICATION PROTOCOL:</strong><br>
+    • Keep messages relevant to galactic affairs<br>
+    • Respect other commanders and alliances<br>
+    • No spam or excessive messaging<br>
+    • Strategic intelligence sharing encouraged<br>
+    • Report violations to galactic administration
+</div>
+
+<script>
+let chatSocket;
+let chatType = '{{ chat_type }}';
+let allianceId = {% if alliance %}'{{ alliance.id }}'{% else %}null{% endif %};
+
+function initializeChat() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let wsUrl;
+    
+    if (chatType === 'global') {
+        wsUrl = `${protocol}//${window.location.host}/ws/chat/global/`;
+    } else {
+        wsUrl = `${protocol}//${window.location.host}/ws/chat/alliance/${allianceId}/`;
+    }
+    
+    chatSocket = new WebSocket(wsUrl);
+    
+    chatSocket.onopen = function(e) {
+        console.log('Chat connection established');
+        addSystemMessage('Connected to communication network');
+    };
+    
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'chat_message' || data.type === 'alliance_message') {
+            addChatMessage(data.username, data.message, data.timestamp);
+        }
+    };
+    
+    chatSocket.onclose = function(e) {
+        console.log('Chat connection closed');
+        addSystemMessage('Disconnected from communication network');
+    };
+    
+    chatSocket.onerror = function(e) {
+        console.error('Chat connection error:', e);
+        addSystemMessage('Communication error - attempting reconnection...');
+    };
+}
+
+function addChatMessage(username, message, timestamp) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageElement = document.createElement('div');
+    
+    const time = new Date(timestamp).toLocaleTimeString();
+    const isOwnMessage = username === '{{ user.username }}';
+    
+    messageElement.innerHTML = `
+        <div style="margin-bottom: 8px; ${isOwnMessage ? 'color: #44ff44;' : ''}">
+            <span style="color: #ffaa44;">[${time}]</span>
+            <strong style="color: ${isOwnMessage ? '#44ff44' : '#00aaff'};">${username}:</strong>
+            ${escapeHtml(message)}
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Keep only last 100 messages
+    while (messagesContainer.children.length > 100) {
+        messagesContainer.removeChild(messagesContainer.firstChild);
+    }
+}
+
+function addSystemMessage(message) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageElement = document.createElement('div');
+    
+    messageElement.innerHTML = `
+        <div style="margin-bottom: 8px; opacity: 0.6; text-align: center; font-style: italic;">
+            ${message}
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (message && chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({
+            'message': message,
+            'username': '{{ user.username }}'
+        }));
+        
+        input.value = '';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    initializeChat();
+    
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('chat-send');
+    
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    sendButton.addEventListener('click', sendMessage);
+    
+    // Focus on input
+    chatInput.focus();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (chatSocket) {
+        chatSocket.close();
+    }
+});
+</script>
+{% endblock %} 

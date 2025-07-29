@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nova Terra: Text Wars{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&display=swap" rel="stylesheet">
+</head>
+<body class="{% if user.is_authenticated and user.profile %}theme-{{ user.profile.preferred_theme }}{% else %}theme-green{% endif %}">
+    <div class="terminal-container">
+        <!-- Simple Header -->
+        <div style="text-align: center; padding: 10px; margin-bottom: 15px; background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 1px solid #333; border-radius: 6px; position: relative;">
+            {% if user.is_authenticated %}
+            <!-- Kingdom Name - Left -->
+            <div class="empire-badge" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); 
+                        background: linear-gradient(145deg, #2a2a0a, #1a1a0a); 
+                        border: 1px solid #ffaa00; 
+                        border-radius: 4px; 
+                        padding: 6px 10px; 
+                        color: #ffaa00; 
+                        font-weight: bold; 
+                        font-size: 11px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        transition: all 0.2s ease;
+                        cursor: pointer;">
+                🏰 {{ user.empire.name|truncatechars:12 }}
+            </div>
+            
+            <!-- Power - Center Left -->
+            <div style="position: absolute; left: 160px; top: 50%; transform: translateY(-50%); 
+                        background: linear-gradient(145deg, #2a2a1a, #1a1a0a); 
+                        border: 1px solid #ffaa00; 
+                        border-radius: 4px; 
+                        padding: 6px 10px; 
+                        color: #ffaa00; 
+                        font-weight: bold; 
+                        font-size: 11px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        transition: all 0.2s ease;">
+                ⚔️ {{ user.empire.power_level }}
+            </div>
+            
+            <!-- Gold - Right -->
+            <div class="gold-badge" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
+                        background: linear-gradient(145deg, #2a2a0a, #1a1a0a); 
+                        border: 1px solid #ffdd00; 
+                        border-radius: 4px; 
+                        padding: 6px 10px; 
+                        color: #ffdd00; 
+                        font-weight: bold; 
+                        font-size: 11px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        transition: all 0.2s ease;">
+                💰 {{ user.empire.gold|default:0 }}
+            </div>
+            
+            <!-- Rank - Right of Gold -->
+            <div class="rank-badge" style="position: absolute; right: 120px; top: 50%; transform: translateY(-50%); 
+                        background: linear-gradient(145deg, #0a1a2a, #0a0a1a); 
+                        border: 1px solid #00aaff; 
+                        border-radius: 4px; 
+                        padding: 6px 10px; 
+                        color: #00aaff; 
+                        font-weight: bold; 
+                        font-size: 11px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        transition: all 0.2s ease;
+                        cursor: pointer;">
+                👑 #{{ user.empire.rank|default:"∞" }}
+            </div>
+            {% endif %}
+            
+            <!-- Main Title - Center -->
+            <h1 style="color: #44ff44; font-size: 20px; margin: 0; font-family: 'Share Tech Mono', monospace;">
+                ⚔️ NOVA TERRA: KINGDOMS WAR ⚔️
+            </h1>
+            <p style="color: #ffaa00; font-size: 10px; margin: 3px 0 0 0;">
+                » Medieval Empire Conquest «
+            </p>
+        </div>
+
+        {% if user.is_authenticated %}
+            <!-- Empire Status -->
+            <div style="background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 1px solid #333; padding: 10px; margin-bottom: 15px; border-radius: 6px; font-family: monospace;">
+                <div style="display: flex; width: 100%; gap: 10px;">
+                    <!-- Resources - Left Side (60%) -->
+                    <div style="display: flex; gap: 8px; flex: 1; justify-content: space-evenly;">
+                        <div style="border: 1px solid #aa44ff; padding: 6px; border-radius: 3px; text-align: center; flex: 1;">
+                            <div style="color: #aa44ff; font-weight: bold; font-size: 14px;" id="header-population">{{ user.empire.population|floatformat:"0" }}</div>
+                            <div style="color: #666; font-size: 9px;">👥 POPULATION</div>
+                        </div>
+                        <div style="border: 1px solid #ffaa00; padding: 6px; border-radius: 3px; text-align: center; flex: 1;">
+                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px;" id="header-energy">{{ user.empire.energy|floatformat:"0" }}/{{ user.empire.energy_storage|floatformat:"0" }}</div>
+                            <div style="color: #666; font-size: 9px;">⚡ ENERGY</div>
+                            <!-- Progress Bar -->
+                            <div style="background: #333; border: 1px solid #555; height: 4px; border-radius: 2px; margin: 2px 0; overflow: hidden;">
+                                <div id="header-energy-bar" style="background: linear-gradient(90deg, #ffaa00, #ffdd44); height: 100%; width: {% widthratio user.empire.energy user.empire.energy_storage 100 %}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div style="color: #44ff44; font-size: 8px; font-weight: bold; text-shadow: 0 0 3px #44ff44;" id="header-energy-production">+{{ user.empire.energy_production|floatformat:0 }}/hour</div>
+                        </div>
+                        <div style="border: 1px solid #aaa; padding: 6px; border-radius: 3px; text-align: center; flex: 1;">
+                            <div style="color: #aaa; font-weight: bold; font-size: 11px;" id="header-minerals">{{ user.empire.minerals|floatformat:"0" }}/{{ user.empire.mineral_storage|floatformat:"0" }}</div>
+                            <div style="color: #666; font-size: 9px;">⛏ MINERALS</div>
+                            <!-- Progress Bar -->
+                            <div style="background: #333; border: 1px solid #555; height: 4px; border-radius: 2px; margin: 2px 0; overflow: hidden;">
+                                <div id="header-minerals-bar" style="background: linear-gradient(90deg, #aaa, #ccc); height: 100%; width: {% widthratio user.empire.minerals user.empire.mineral_storage 100 %}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div style="color: #44ff44; font-size: 8px; font-weight: bold; text-shadow: 0 0 3px #44ff44;" id="header-minerals-production">+{{ user.empire.mineral_production|floatformat:0 }}/hour</div>
+                        </div>
+                        <div style="border: 1px solid #44ff44; padding: 6px; border-radius: 3px; text-align: center; flex: 1;">
+                            <div style="color: #44ff44; font-weight: bold; font-size: 11px;" id="header-food">{{ user.empire.food|floatformat:"0" }}/{{ user.empire.food_storage|floatformat:"0" }}</div>
+                            <div style="color: #666; font-size: 9px;">🌾 FOOD</div>
+                            <!-- Progress Bar -->
+                            <div style="background: #333; border: 1px solid #555; height: 4px; border-radius: 2px; margin: 2px 0; overflow: hidden;">
+                                <div id="header-food-bar" style="background: linear-gradient(90deg, #44ff44, #66ff66); height: 100%; width: {% widthratio user.empire.food user.empire.food_storage 100 %}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div style="color: #44ff44; font-size: 8px; font-weight: bold; text-shadow: 0 0 3px #44ff44;" id="header-food-production">+{{ user.empire.food_production|floatformat:0 }}/hour</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Attack Status - Right Side (40%) -->
+                    <div style="display: flex; gap: 8px; flex: 1;">
+                        <!-- Incoming Attacks -->
+                        <div style="border: 1px solid #ff4444; padding: 8px 12px; border-radius: 4px; flex: 1; background: linear-gradient(145deg, #2a1a1a, #1a0a0a);">
+                            <div style="color: #ff4444; font-weight: bold; font-size: 11px; margin-bottom: 2px;">
+                                🛡️ INCOMING
+                            </div>
+                            <div style="color: #ff6666; font-size: 10px;" id="incoming-attacks">
+                                <span style="color: #fff;">0</span> raids
+                            </div>
+                            <div style="color: #ffaa44; font-size: 9px;" id="next-incoming-time">
+                                --:--:--
+                            </div>
+                        </div>
+                        
+                        <!-- Outgoing Attacks -->
+                        <div style="border: 1px solid #ffaa00; padding: 8px 12px; border-radius: 4px; flex: 1; background: linear-gradient(145deg, #2a2a1a, #1a1a0a); position: relative;" onmouseover="showAttackDetails(event)" onmouseout="hideAttackDetails()">
+                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; margin-bottom: 2px;">
+                                ⚔️ OUTGOING
+                            </div>
+                            <div style="color: #ffcc66; font-size: 10px;" id="outgoing-attacks">
+                                <span style="color: #fff;">0</span> raids
+                            </div>
+                            <div style="color: #44ff44; font-size: 9px;" id="next-outgoing-time">
+                                --:--:--
+                            </div>
+                            
+                            <!-- Detailed Attack Tooltip -->
+                            <div id="attack-details-tooltip" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1000; background: #1a1a1a; border: 2px solid #ffaa00; border-radius: 8px; padding: 15px; min-width: 300px; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+                                <div style="color: #ffaa00; font-weight: bold; margin-bottom: 10px; font-size: 12px;">
+                                    📊 ACTIVE OPERATIONS
+                                </div>
+                                <div id="attack-details-content">
+                                    <!-- Content will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simple One-Line Navigation -->
+            <div style="background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 20px; font-family: monospace;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    
+                    <a href="{% url 'game:dashboard' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 1px solid #44ff44; color: #44ff44; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        🏰 CASTLE
+                    </a>
+                    
+                    <a href="{% url 'game:map' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border: 1px solid #44ff44; color: #44ff44; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        🗺️ WORLD
+                    </a>
+                    
+                    <a href="{% url 'game:buildings' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a4a2a, #3a3a1a); border: 1px solid #ffaa00; color: #ffaa00; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        🏗️ BUILD
+                    </a>
+                    
+                    <a href="{% url 'game:research' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #2a2a4a, #1a1a3a); border: 1px solid #00aaff; color: #00aaff; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        📚 KNOWLEDGE
+                    </a>
+                    
+                    <a href="{% url 'game:military' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border: 1px solid #ff4444; color: #ff4444; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        ⚔️ ARMY
+                    </a>
+                    
+                    <a href="{% url 'game:diplomacy' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a2a4a, #3a1a3a); border: 1px solid #aa44ff; color: #aa44ff; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        🤝 DIPLOMACY
+                    </a>
+                    
+                    <a href="{% url 'game:rankings' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a4a4a, #3a3a3a); border: 1px solid #aaa; color: #aaa; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        🏆 NOBLES
+                    </a>
+                    
+                    <a href="{% url 'game:reports' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a4a2a, #3a3a1a); border: 1px solid #ffaa00; color: #ffaa00; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        📜 REPORTS
+                    </a>
+                    
+                    <a href="{% url 'game:unit_stats' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #2a4a4a, #1a3a3a); border: 1px solid #00ffff; color: #00ffff; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        📊 STATS
+                    </a>
+                    
+                    <a href="{% url 'game:events' %}" class="simple-nav-btn" style="background: linear-gradient(145deg, #4a3a2a, #3a2a1a); border: 1px solid #ff8844; color: #ff8844; padding: 8px 12px; font-size: 14px; font-weight: bold;">
+                        📰 NEWS
+                    </a>
+                    
+                </div>
+                
+                <div style="color: #666; font-size: 12px; margin-top: 8px; text-align: center; border-top: 1px solid #333; padding-top: 6px; font-weight: bold;">
+                    [ STATUS: <span style="color: #44ff44;">ONLINE</span> ] [ LORD: <span style="color: #ffaa00;">{{ user.username }}</span> ] [ TIME: <span id="server-time" style="color: #00aaff;">--:--:--</span> ]
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <div class="terminal-content">
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">
+                            ┌─ {{ message.tags|upper }} ─────────────────────────────────────────────────────────────┐
+                            │ {{ message }}
+                            └───────────────────────────────────────────────────────────────────────────────────────┘
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}
+            {% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <div class="terminal-footer">
+            <div class="footer-left">
+                {% if user.is_authenticated %}
+                    Commander: {{ user.username }} | <a href="{% url 'accounts:profile' %}">PROFILE</a> | <a href="{% url 'accounts:logout' %}">LOGOUT</a>
+                {% else %}
+                    <a href="{% url 'accounts:login' %}">LOGIN</a> | <a href="{% url 'accounts:register' %}">REGISTER</a>
+                {% endif %}
+            </div>
+            <div class="footer-right">
+                Server Time: <span id="server-time"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebSocket connection for real-time updates -->
+    {% if user.is_authenticated and user.empire %}
+        <script>
+            const empireId = {{ user.empire.id }};
+            const username = "{{ user.username }}";
+            
+            // Attack status tracking
+            let attackData = {
+                incoming: [],
+                outgoing: []
+            };
+            
+            // Resource tracking for real-time updates
+            let empireResources = {
+                energy: Math.floor({{ user.empire.energy }}),
+                minerals: Math.floor({{ user.empire.minerals }}),
+                food: Math.floor({{ user.empire.food }}),
+                population: Math.floor({{ user.empire.population }}),
+                energy_production: Math.floor({{ user.empire.energy_production }}),
+                mineral_production: Math.floor({{ user.empire.mineral_production }}),
+                food_production: Math.floor({{ user.empire.food_production }}),
+                energy_storage: Math.floor({{ user.empire.energy_storage }}),
+                mineral_storage: Math.floor({{ user.empire.mineral_storage }}),
+                food_storage: Math.floor({{ user.empire.food_storage }})
+            };
+            
+            // Real-time resource update function
+            function updateResources() {
+                console.log('🔄 Making API call to update resources...');
+                
+                fetch('/game/api/generate-resources/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    console.log('📡 API Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    console.log('✅ Resource update API response:', result);
+                    
+                    if (result.success) {
+                        // Store old values for comparison
+                        const oldEnergy = empireResources.energy;
+                        const oldMinerals = empireResources.minerals;
+                        const oldFood = empireResources.food;
+                        
+                        // Update empire resources FIRST - ENSURE ALL VALUES ARE INTEGERS
+                        empireResources.energy = Math.floor(result.energy);
+                        empireResources.minerals = Math.floor(result.minerals);
+                        empireResources.food = Math.floor(result.food);
+                        empireResources.population = Math.floor(result.population || empireResources.population);
+                        empireResources.energy_production = Math.floor(result.energy_production);
+                        empireResources.mineral_production = Math.floor(result.mineral_production);
+                        empireResources.food_production = Math.floor(result.food_production);
+                        empireResources.energy_storage = Math.floor(result.energy_storage);
+                        empireResources.mineral_storage = Math.floor(result.mineral_storage);
+                        empireResources.food_storage = Math.floor(result.food_storage);
+                        
+                        // FORCE DOM UPDATE IMMEDIATELY - Use direct DOM manipulation
+                        console.log('🔧 FORCING DOM UPDATES...');
+                        
+                        // Population update
+                        const populationElement = document.getElementById('header-population');
+                        if (populationElement) {
+                            const newPopulationText = formatNumber(empireResources.population);
+                            populationElement.innerHTML = newPopulationText;
+                            console.log(`👥 POPULATION UPDATED: ${newPopulationText}`);
+                        }
+                        
+                        // Energy update
+                        const energyElement = document.getElementById('header-energy');
+                        if (energyElement) {
+                            const newEnergyText = `${formatNumber(empireResources.energy)}/${formatStorage(empireResources.energy_storage)}`;
+                            energyElement.innerHTML = newEnergyText;
+                            console.log(`⚡ ENERGY UPDATED: ${newEnergyText}`);
+                        }
+                        
+                        // Minerals update
+                        const mineralsElement = document.getElementById('header-minerals');
+                        if (mineralsElement) {
+                            const newMineralsText = `${formatNumber(empireResources.minerals)}/${formatStorage(empireResources.mineral_storage)}`;
+                            mineralsElement.innerHTML = newMineralsText;
+                            console.log(`⛏ MINERALS UPDATED: ${newMineralsText}`);
+                        }
+                        
+                        // Food update
+                        const foodElement = document.getElementById('header-food');
+                        if (foodElement) {
+                            const newFoodText = `${formatNumber(empireResources.food)}/${formatStorage(empireResources.food_storage)}`;
+                            foodElement.innerHTML = newFoodText;
+                            console.log(`🌾 FOOD UPDATED: ${newFoodText}`);
+                        }
+                        
+                        // Update production displays
+                        const energyProdElement = document.getElementById('header-energy-production');
+                        if (energyProdElement) {
+                            energyProdElement.innerHTML = `+${formatNumber(empireResources.energy_production)}/hour`;
+                        }
+                        
+                        const mineralsProdElement = document.getElementById('header-minerals-production');
+                        if (mineralsProdElement) {
+                            mineralsProdElement.innerHTML = `+${formatNumber(empireResources.mineral_production)}/hour`;
+                        }
+                        
+                        const foodProdElement = document.getElementById('header-food-production');
+                        if (foodProdElement) {
+                            foodProdElement.innerHTML = `+${formatNumber(empireResources.food_production)}/hour`;
+                        }
+                        
+                        // Update progress bars
+                        const energyBar = document.getElementById('header-energy-bar');
+                        if (energyBar) {
+                            const energyPercentage = Math.min((empireResources.energy / empireResources.energy_storage) * 100, 100);
+                            energyBar.style.width = energyPercentage + '%';
+                        }
+                        
+                        const mineralsBar = document.getElementById('header-minerals-bar');
+                        if (mineralsBar) {
+                            const mineralsPercentage = Math.min((empireResources.minerals / empireResources.mineral_storage) * 100, 100);
+                            mineralsBar.style.width = mineralsPercentage + '%';
+                        }
+                        
+                        const foodBar = document.getElementById('header-food-bar');
+                        if (foodBar) {
+                            const foodPercentage = Math.min((empireResources.food / empireResources.food_storage) * 100, 100);
+                            foodBar.style.width = foodPercentage + '%';
+                        }
+                        
+                        // Log changes with clean integer values only
+                        const currentEnergy = empireResources.energy;
+                        const currentMinerals = empireResources.minerals;
+                        const currentFood = empireResources.food;
+                        const oldEnergyInt = Math.floor(Number(oldEnergy) || 0);
+                        const oldMineralsInt = Math.floor(Number(oldMinerals) || 0);
+                        const oldFoodInt = Math.floor(Number(oldFood) || 0);
+                        
+                        if (currentEnergy !== oldEnergyInt || currentMinerals !== oldMineralsInt || currentFood !== oldFoodInt) {
+                            const energyChange = currentEnergy - oldEnergyInt;
+                            const mineralsChange = currentMinerals - oldMineralsInt;
+                            const foodChange = currentFood - oldFoodInt;
+                            
+                            console.log('📈 Resources changed:', {
+                                energy: `${oldEnergyInt} → ${currentEnergy} (${energyChange >= 0 ? '+' : ''}${energyChange})`,
+                                minerals: `${oldMineralsInt} → ${currentMinerals} (${mineralsChange >= 0 ? '+' : ''}${mineralsChange})`,
+                                food: `${oldFoodInt} → ${currentFood} (${foodChange >= 0 ? '+' : ''}${foodChange})`
+                            });
+                        }
+                        
+                        // Debug detailed generation info
+                        if (result.generation_result && result.generation_result.generated) {
+                            console.log('🏭 Generation details:', {
+                                generated: result.generation_result.generated,
+                                time_passed: `${result.generation_result.time_passed_seconds}s`,
+                                energy_gen: result.generation_result.energy_generated,
+                                minerals_gen: result.generation_result.minerals_generated,
+                                food_gen: result.generation_result.food_generated
+                            });
+                        }
+                        
+                    } else {
+                        console.error('❌ Resource update failed:', result.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Resource update error:', error);
+                });
+            }
+            
+            // Format numbers without locale-specific spaces - ENHANCED to handle decimals properly
+            function formatNumber(num) {
+                // Handle null, undefined, NaN, infinity
+                if (num === null || num === undefined || isNaN(num) || !isFinite(num)) {
+                    return '0';
+                }
+                
+                // Convert to number if it's a string, then floor to integer
+                const numericValue = Number(num);
+                if (isNaN(numericValue) || !isFinite(numericValue)) {
+                    return '0';
+                }
+                
+                // Always floor to integer to prevent any decimals
+                const rounded = Math.floor(Math.abs(numericValue));
+                
+                // Format with commas
+                return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+            
+            // Enhanced format function for storage values (handles K, M notation)
+            function formatStorage(num) {
+                const rounded = Math.floor(Number(num) || 0);
+                if (rounded >= 1000000) {
+                    return Math.floor(rounded / 1000000) + 'M';
+                } else if (rounded >= 1000) {
+                    return Math.floor(rounded / 1000) + 'K';
+                } else {
+                    return rounded.toString();
+                }
+            }
+            
+            // Force DOM synchronization - ensures elements are updated even if they're stubborn
+            function forceDOMSync() {
+                console.log('🔧 Force DOM sync initiated...');
+                
+                // Direct DOM updates for all resources
+                const populationElement = document.getElementById('header-population');
+                if (populationElement) {
+                    populationElement.innerHTML = formatNumber(empireResources.population);
+                }
+                
+                const energyElement = document.getElementById('header-energy');
+                if (energyElement) {
+                    energyElement.innerHTML = `${formatNumber(empireResources.energy)}/${formatStorage(empireResources.energy_storage)}`;
+                }
+                
+                const mineralsElement = document.getElementById('header-minerals');
+                if (mineralsElement) {
+                    mineralsElement.innerHTML = `${formatNumber(empireResources.minerals)}/${formatStorage(empireResources.mineral_storage)}`;
+                }
+                
+                const foodElement = document.getElementById('header-food');
+                if (foodElement) {
+                    foodElement.innerHTML = `${formatNumber(empireResources.food)}/${formatStorage(empireResources.food_storage)}`;
+                }
+                
+                // Update production displays
+                const energyProdElement = document.getElementById('header-energy-production');
+                if (energyProdElement) {
+                    energyProdElement.innerHTML = `+${formatNumber(empireResources.energy_production)}/hour`;
+                }
+                
+                const mineralsProdElement = document.getElementById('header-minerals-production');
+                if (mineralsProdElement) {
+                    mineralsProdElement.innerHTML = `+${formatNumber(empireResources.mineral_production)}/hour`;
+                }
+                
+                const foodProdElement = document.getElementById('header-food-production');
+                if (foodProdElement) {
+                    foodProdElement.innerHTML = `+${formatNumber(empireResources.food_production)}/hour`;
+                }
+                
+                // Update progress bars
+                const energyBar = document.getElementById('header-energy-bar');
+                if (energyBar) {
+                    const energyPercentage = Math.min((empireResources.energy / empireResources.energy_storage) * 100, 100);
+                    energyBar.style.width = energyPercentage + '%';
+                }
+                
+                const mineralsBar = document.getElementById('header-minerals-bar');
+                if (mineralsBar) {
+                    const mineralsPercentage = Math.min((empireResources.minerals / empireResources.mineral_storage) * 100, 100);
+                    mineralsBar.style.width = mineralsPercentage + '%';
+                }
+                
+                const foodBar = document.getElementById('header-food-bar');
+                if (foodBar) {
+                    const foodPercentage = Math.min((empireResources.food / empireResources.food_storage) * 100, 100);
+                    foodBar.style.width = foodPercentage + '%';
+                }
+                
+                console.log('✅ Force DOM sync completed');
+            }
+            
+            // Enhanced smooth resource growth simulation between API calls
+            function simulateResourceGrowth() {
+                // Calculate how much resources should grow per second
+                const growthPerSecond = {
+                    energy: empireResources.energy_production / 3600, // per hour to per second
+                    minerals: empireResources.mineral_production / 3600,
+                    food: empireResources.food_production / 3600
+                };
+                
+                let hasUpdates = false;
+                
+                // Simulate smooth growth for each resource type
+                ['energy', 'minerals', 'food'].forEach(resourceType => {
+                    const currentAmount = empireResources[resourceType];
+                    const storage = empireResources[`${resourceType}_storage`];
+                    const growth = growthPerSecond[resourceType];
+                    
+                    if (currentAmount < storage && growth > 0) {
+                        // Add smooth growth (but don't exceed storage) and FLOOR to integer
+                        const newAmount = Math.floor(Math.min(currentAmount + growth, storage));
+                        empireResources[resourceType] = newAmount;
+                        hasUpdates = true;
+                        
+                        // Force immediate DOM update for this resource with proper formatting
+                        const amountElement = document.getElementById(`header-${resourceType}`);
+                        const barElement = document.getElementById(`header-${resourceType}-bar`);
+                        
+                        if (amountElement) {
+                            const newText = `${formatNumber(newAmount)}/${formatStorage(storage)}`;
+                            amountElement.innerHTML = newText;
+                        }
+                        
+                        if (barElement) {
+                            const percentage = Math.min((newAmount / storage) * 100, 100);
+                            barElement.style.width = percentage + '%';
+                        }
+                    }
+                });
+                
+                if (hasUpdates) {
+                    console.log('📈 Resource growth simulation updated:', {
+                        energy: Math.floor(empireResources.energy),
+                        minerals: Math.floor(empireResources.minerals), 
+                        food: Math.floor(empireResources.food)
+                    });
+                }
+            }
+            
+            // Update attack status
+            function updateAttackStatus() {
+                fetch('/game/api/battle-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        attackData = data;
+                        updateAttackDisplay();
+                    }
+                })
+                .catch(error => console.log('Attack status update failed:', error));
+            }
+            
+            // Update attack display
+            function updateAttackDisplay() {
+                // Update incoming attacks
+                const incomingElement = document.getElementById('incoming-attacks');
+                const incomingTimeElement = document.getElementById('next-incoming-time');
+                
+                if (incomingElement) {
+                    const incomingCount = attackData.incoming ? attackData.incoming.length : 0;
+                    incomingElement.innerHTML = `<span style="color: #fff;">${incomingCount}</span> raids`;
+                    
+                    if (incomingCount > 0 && attackData.incoming[0]) {
+                        const nextAttack = attackData.incoming[0];
+                        const timeLeft = calculateTimeLeft(nextAttack.battle_occurs);
+                        incomingTimeElement.textContent = timeLeft;
+                        incomingTimeElement.style.color = timeLeft.includes('-') ? '#ff4444' : '#ffaa44';
+                    } else {
+                        incomingTimeElement.textContent = '--:--:--';
+                        incomingTimeElement.style.color = '#666';
+                    }
+                }
+                
+                // Update outgoing attacks
+                const outgoingElement = document.getElementById('outgoing-attacks');
+                const outgoingTimeElement = document.getElementById('next-outgoing-time');
+                
+                if (outgoingElement) {
+                    const outgoingCount = attackData.outgoing ? attackData.outgoing.length : 0;
+                    const travelingCount = attackData.outgoing ? attackData.outgoing.filter(a => a.status === 'traveling').length : 0;
+                    const returningCount = attackData.outgoing ? attackData.outgoing.filter(a => a.status === 'returning').length : 0;
+                    
+                    let displayText = '';
+                    if (travelingCount > 0 && returningCount > 0) {
+                        displayText = `<span style="color: #fff;">${travelingCount}</span> going, <span style="color: #44ff44;">${returningCount}</span> returning`;
+                    } else if (travelingCount > 0) {
+                        displayText = `<span style="color: #fff;">${travelingCount}</span> traveling`;
+                    } else if (returningCount > 0) {
+                        displayText = `<span style="color: #44ff44;">${returningCount}</span> returning`;
+                    } else {
+                        displayText = `<span style="color: #fff;">${outgoingCount}</span> raids`;
+                    }
+                    
+                    outgoingElement.innerHTML = displayText;
+                    
+                    if (outgoingCount > 0 && attackData.outgoing[0]) {
+                        const nextAttack = attackData.outgoing[0];
+                        const timeLeft = nextAttack.status === 'traveling' ? 
+                            calculateTimeLeft(nextAttack.battle_occurs) : 
+                            calculateTimeLeft(nextAttack.armies_return);
+                        outgoingTimeElement.textContent = timeLeft;
+                        outgoingTimeElement.style.color = nextAttack.status === 'traveling' ? '#ffaa44' : '#44ff44';
+                    } else {
+                        outgoingTimeElement.textContent = '--:--:--';
+                        outgoingTimeElement.style.color = '#666';
+                    }
+                }
+            }
+            
+            // Show attack details tooltip
+            function showAttackDetails(event) {
+                const tooltip = document.getElementById('attack-details-tooltip');
+                const content = document.getElementById('attack-details-content');
+                
+                if (!attackData.outgoing || attackData.outgoing.length === 0) {
+                    content.innerHTML = '<div style="color: #666; font-style: italic;">No active operations</div>';
+                } else {
+                    let html = '';
+                    
+                    attackData.outgoing.forEach((attack, index) => {
+                        const status = attack.status;
+                        const timeLeft = status === 'traveling' ? 
+                            calculateTimeLeft(attack.battle_occurs) : 
+                            calculateTimeLeft(attack.armies_return);
+                        
+                        const statusColor = status === 'traveling' ? '#ffaa44' : '#44ff44';
+                        const statusIcon = status === 'traveling' ? '🚀' : '🏠';
+                        const statusText = status === 'traveling' ? 'TRAVELING' : 'RETURNING';
+                        
+                        html += `
+                            <div style="border: 1px solid #333; border-radius: 4px; padding: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.02);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <div style="color: #ffaa00; font-weight: bold; font-size: 11px;">
+                                        ${attack.attack_type || '⚔️ Attack'} vs ${attack.target_name || attack.defender} ${attack.territory}
+                                    </div>
+                                    <div style="color: ${statusColor}; font-size: 10px; font-weight: bold;">
+                                        ${statusIcon} ${statusText}
+                                    </div>
+                                </div>
+                                <div style="font-family: monospace; font-size: 10px; color: #aaa;">
+                                    <div>Army: ${attack.total_units || 0} units</div>
+                                    <div>Distance: ${attack.distance.toFixed(1)} units</div>
+                                    <div>Travel Time: ${attack.travel_time} min each way</div>
+                                </div>
+                                <div style="color: ${statusColor}; font-size: 11px; font-weight: bold; margin-top: 4px;">
+                                    ${status === 'traveling' ? 'Arrives' : 'Returns'}: ${timeLeft}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    content.innerHTML = html;
+                }
+                
+                tooltip.style.display = 'block';
+            }
+            
+            // Hide attack details tooltip
+            function hideAttackDetails() {
+                const tooltip = document.getElementById('attack-details-tooltip');
+                tooltip.style.display = 'none';
+            }
+            
+            // Calculate time left until battle
+            function calculateTimeLeft(battleTime) {
+                if (!battleTime) return '--:--:--';
+                
+                const now = new Date();
+                const battle = new Date(battleTime);
+                const diff = battle - now;
+                
+                if (diff <= 0) return 'NOW!';
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                if (hours > 0) {
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }
+            
+            // Initialize real-time updates
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🚀 Initializing Nova Terra real-time systems...');
+                console.log('📊 Initial empire resources:', empireResources);
+                
+                // Check if all necessary elements exist
+                const requiredElements = ['header-population', 'header-energy', 'header-minerals', 'header-food', 'header-energy-production', 'header-minerals-production', 'header-food-production'];
+                const missingElements = [];
+                
+                requiredElements.forEach(elementId => {
+                    const element = document.getElementById(elementId);
+                    if (!element) {
+                        missingElements.push(elementId);
+                    } else {
+                        console.log(`✅ Found element: ${elementId}`);
+                    }
+                });
+                
+                if (missingElements.length > 0) {
+                    console.error('❌ Missing required elements:', missingElements);
+                } else {
+                    console.log('✅ All required DOM elements found');
+                }
+                
+                // FORCE INITIAL DOM FORMAT - Ensure no decimals are shown from template rendering
+                console.log('🔧 Forcing initial DOM format to remove any decimals...');
+                forceDOMSync();
+                
+                // Start the update cycle immediately
+                console.log('⏰ Starting immediate resource update...');
+                updateResources();
+                
+                // Force initial DOM sync
+                setTimeout(() => {
+                    forceDOMSync();
+                }, 1000);
+                
+                // Set up intervals with more aggressive updates
+                console.log('⏰ Setting up update intervals...');
+                setInterval(updateResources, 3000); // API calls every 3 seconds (more frequent)
+                setInterval(simulateResourceGrowth, 500); // Smooth simulation every 0.5 seconds (more frequent)
+                setInterval(forceDOMSync, 5000); // Force sync every 5 seconds (more frequent)
+                
+                // Update attack status every 10 seconds
+                updateAttackStatus();
+                setInterval(updateAttackStatus, 10000);
+                
+                // Update attack display countdown every second
+                setInterval(updateAttackDisplay, 1000);
+                
+                console.log('✅ Real-time systems initialized successfully!');
+                console.log('⏱️ API: 3s, Simulation: 0.5s, Force sync: 5s');
+                
+                // Add a status indicator (small and unobtrusive)
+                const statusIndicator = document.createElement('div');
+                statusIndicator.id = 'real-time-status';
+                statusIndicator.style.cssText = `
+                    position: fixed; 
+                    bottom: 5px; 
+                    right: 5px; 
+                    z-index: 9999; 
+                    background: rgba(68, 255, 68, 0.7); 
+                    color: #000; 
+                    padding: 2px 6px; 
+                    border-radius: 2px; 
+                    font-size: 8px; 
+                    font-weight: bold;
+                    opacity: 0.6;
+                `;
+                statusIndicator.textContent = '🟢';
+                document.body.appendChild(statusIndicator);
+            });
+            
+            // Add force update function for debugging
+            function forceResourceUpdate() {
+                console.log('🔧 Force updating resources...');
+                updateResources();
+            }
+            
+            // Make functions available globally for console debugging
+            window.forceResourceUpdate = forceResourceUpdate;
+            window.forceDOMSync = forceDOMSync;
+            window.empireResources = empireResources;
+            window.simulateResourceGrowth = simulateResourceGrowth;
+            window.forceIntegerFormatting = forceIntegerFormatting;
+            
+            // Add a global function to check resource element status
+            window.checkResourceElements = function() {
+                const elements = ['header-population', 'header-energy', 'header-minerals', 'header-food', 'header-energy-production', 'header-minerals-production', 'header-food-production'];
+                console.log('🔍 Checking resource elements:');
+                elements.forEach(id => {
+                    const element = document.getElementById(id);
+                    console.log(`${id}: ${element ? '✅ Found' : '❌ Missing'}`);
+                    if (element) {
+                        console.log(`  - Text: "${element.textContent}"`);
+                        console.log(`  - Visible: ${element.offsetWidth > 0 && element.offsetHeight > 0}`);
+                    }
+                });
+            };
+            
+            // Add a global function to manually set resource values (for testing)
+            window.setResourceValues = function(energy, minerals, food) {
+                empireResources.energy = Math.floor(energy || empireResources.energy);
+                empireResources.minerals = Math.floor(minerals || empireResources.minerals);
+                empireResources.food = Math.floor(food || empireResources.food);
+                forceDOMSync();
+                console.log('✅ Resource values set and DOM synced');
+            };
+            
+            // Add a global function to force integer formatting on all displayed values
+            window.forceIntegerFormatting = function() {
+                console.log('🔧 Forcing integer formatting on all resources...');
+                
+                // Floor all empireResources values
+                empireResources.energy = Math.floor(empireResources.energy);
+                empireResources.minerals = Math.floor(empireResources.minerals);
+                empireResources.food = Math.floor(empireResources.food);
+                empireResources.population = Math.floor(empireResources.population);
+                empireResources.energy_production = Math.floor(empireResources.energy_production);
+                empireResources.mineral_production = Math.floor(empireResources.mineral_production);
+                empireResources.food_production = Math.floor(empireResources.food_production);
+                empireResources.energy_storage = Math.floor(empireResources.energy_storage);
+                empireResources.mineral_storage = Math.floor(empireResources.mineral_storage);
+                empireResources.food_storage = Math.floor(empireResources.food_storage);
+                
+                // Force DOM sync with floored values
+                forceDOMSync();
+                
+                console.log('✅ All resources forced to integers:', empireResources);
+            };
+        </script>
+        <script src="/static/js/websocket.js"></script>
+    {% endif %}
+    
+    <script src="/static/js/main.js"></script>
+    
+    <style>
+    .simple-nav-btn {
+        display: inline-block;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 10px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .simple-nav-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+        text-decoration: none;
+        filter: brightness(1.1);
+    }
+    
+    /* Header Empire Badge Styles */
+    .empire-badge:hover {
+        transform: translateY(-50%) scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        filter: brightness(1.2);
+    }
+    
+    .rank-badge:hover {
+        transform: translateY(-50%) scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        filter: brightness(1.2);
+    }
+    
+    @media (max-width: 768px) {
+        .simple-nav-btn {
+            padding: 6px 8px;
+            font-size: 9px;
+        }
+        
+        .empire-badge, .rank-badge {
+            font-size: 9px !important;
+            padding: 4px 6px !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .simple-nav-btn {
+            padding: 5px 6px;
+            font-size: 8px;
+        }
+        
+        .empire-badge, .rank-badge {
+            font-size: 8px !important;
+            padding: 3px 5px !important;
+        }
+    }
+    
+    /* Real-time resource animations */
+    @keyframes flash-green {
+        0% { background-color: rgba(68, 255, 68, 0.3); transform: scale(1.02); }
+        50% { background-color: rgba(68, 255, 68, 0.6); transform: scale(1.05); }
+        100% { background-color: transparent; transform: scale(1); }
+    }
+    
+    .resource-flash {
+        animation: flash-green 0.8s ease;
+    }
+    </style>
+    
+    <!-- Hidden CSRF token for AJAX calls -->
+    {% if user.is_authenticated %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    {% endif %}
+</body>
+</html> 

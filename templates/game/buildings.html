@@ -1,0 +1,1463 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load math_filters %}
+
+{% block title %}Empire Buildings - {{ empire.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Territory Buildings -->
+{% for territory in territories %}
+<div class="dashboard-panel" style="margin-bottom: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h4 style="color: #ffaa44; margin: 0;">
+            🗺️ ({{ territory.x }}, {{ territory.y }}) - {{ territory.get_terrain_type_display }} 
+            <span style="color: #aaa; font-size: 12px;">[{{ territory.buildings.count }}/7 slots]</span>
+        </h4>
+        <div style="font-size: 12px; color: #aaa;">
+            {% if territory.resource_bonus != 'none' %}
+                Bonus: {{ territory.get_resource_bonus_display }} | 
+            {% endif %}
+            Defense: +{{ territory.defense_bonus }}
+        </div>
+    </div>
+    
+    <!-- Building Slots Grid -->
+    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 15px;">
+        {% for building in territory.buildings.all %}
+        <!-- Existing Building Slot with Upgrade Button -->
+        <div class="building-slot occupied" data-territory-id="{{ territory.id }}" data-building-id="{{ building.id }}" data-building-type="{{ building.building_type }}"
+             style="border: 2px solid #44ff44; padding: 10px; text-align: center; cursor: pointer; background: rgba(68, 255, 68, 0.1); min-height: 120px; display: flex; flex-direction: column; justify-content: space-between;">
+            
+            <!-- Building Icon and Level -->
+            <div style="margin-bottom: 8px;">
+                <div style="font-size: 24px; margin-bottom: 5px;">
+                    {% if building.building_type == 'power_plant' %}⚡
+                    {% elif building.building_type == 'mine' %}⛏️
+                    {% elif building.building_type == 'farm' %}🌾
+                    {% elif building.building_type == 'research_lab' %}🔬
+                    {% elif building.building_type == 'barracks' %}🪖
+                    {% elif building.building_type == 'defense_system' %}🛡️
+                    {% elif building.building_type == 'spy_network' %}🕵️
+                    {% elif building.building_type == 'factory' %}🏭
+                    {% elif building.building_type == 'command_center' %}🏛️
+                    {% elif building.building_type == 'warehouse' %}📦
+                    {% else %}🏗️{% endif %}
+                </div>
+                <div style="font-size: 16px; font-weight: bold; color: #fff;">
+                    Lv.{{ building.level }}
+                </div>
+            </div>
+            
+            <!-- Upgrade Button or Progress Bar -->
+            {% if building.upgrade_started and building.upgrade_complete %}
+                {% now "U" as current_timestamp %}
+                {% if building.upgrade_complete|date:"U"|add:"0" > current_timestamp|add:"0" %}
+                <!-- Show Progress Bar - Building is currently upgrading -->
+                <div style="margin-top: 5px;">
+                    <div style="font-size: 10px; color: #ffaa44; margin-bottom: 3px;">⏱️ UPGRADING</div>
+                    <div style="background: #333; border: 1px solid #666; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div class="upgrade-progress" data-building-id="{{ building.id }}" 
+                             data-end-time="{{ building.upgrade_complete|date:'c' }}"
+                             style="background: linear-gradient(90deg, #44ff44, #ffaa44); height: 100%; width: 0%; transition: width 0.3s ease;">
+                        </div>
+                    </div>
+                    <div style="font-size: 9px; color: #aaa; margin-top: 2px;" id="upgrade-time-{{ building.id }}">
+                        Calculating...
+                    </div>
+                </div>
+                {% else %}
+                <!-- Upgrade is complete but not processed yet - Show upgrade button -->
+                <button class="upgrade-button" data-building-id="{{ building.id }}" data-building-type="{{ building.building_type }}" data-current-level="{{ building.level }}"
+                        style="padding: 4px 6px; font-size: 9px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; width: 100%;">
+                    {% if building.level >= 100 %}
+                        MAX LEVEL
+                    {% else %}
+                        <div style="margin-bottom: 2px;">⬆️ UPGRADE</div>
+                        <div style="font-size: 9px; color: #000; line-height: 1.2; font-weight: bold;">
+                            {% with upgrade_cost=upgrade_costs|lookup:building.id %}
+                                ⚡{{ upgrade_cost.energy }} ⛏{{ upgrade_cost.minerals }} 🌾{{ upgrade_cost.food }}
+                            {% endwith %}
+                        </div>
+                    {% endif %}
+                </button>
+                {% endif %}
+            {% else %}
+                <!-- Show Upgrade Button - No upgrade in progress -->
+                <button class="upgrade-button" data-building-id="{{ building.id }}" data-building-type="{{ building.building_type }}" data-current-level="{{ building.level }}"
+                        style="padding: 4px 6px; font-size: 9px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; width: 100%;">
+                    {% if building.level >= 100 %}
+                        MAX LEVEL
+                    {% else %}
+                        <div style="margin-bottom: 2px;">⬆️ UPGRADE</div>
+                        <div style="font-size: 9px; color: #000; line-height: 1.2; font-weight: bold;">
+                            {% with upgrade_cost=upgrade_costs|lookup:building.id %}
+                                ⚡{{ upgrade_cost.energy }} ⛏{{ upgrade_cost.minerals }} 🌾{{ upgrade_cost.food }}
+                            {% endwith %}
+                        </div>
+                    {% endif %}
+                </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        {% for slot in territory.empty_slots %}
+        <!-- Empty Building Slot -->
+        <div class="building-slot empty" data-territory-id="{{ territory.id }}"
+             style="border: 2px dashed #666; padding: 10px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02); min-height: 80px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 20px; opacity: 0.5;">➕</div>
+            <div style="font-size: 10px; color: #aaa; margin-top: 5px;">BUILD</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+<!-- Building Construction Modal -->
+<div id="building-construction-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 2px solid #44ff44; padding: 20px; max-width: 600px; width: 90%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="color: #44ff44; margin: 0;">🏗️ CONSTRUCT BUILDING</h3>
+            <button id="close-construction-modal" style="background: none; border: none; color: #ff4444; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div style="font-family: monospace; font-size: 12px; margin-bottom: 15px; color: #aaa;">
+            Territory: <span id="modal-territory-info"></span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+            <div class="building-option" data-building-type="power_plant" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">⚡</div>
+                <div style="font-size: 12px; font-weight: bold;">Power Plant</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+2 Population</div>
+            </div>
+            <div class="building-option" data-building-type="mine" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">⛏️</div>
+                <div style="font-size: 12px; font-weight: bold;">Mine</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+3 Population</div>
+            </div>
+            <div class="building-option" data-building-type="farm" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🌾</div>
+                <div style="font-size: 12px; font-weight: bold;">Farm</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+4 Population</div>
+            </div>
+            <div class="building-option" data-building-type="research_lab" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🔬</div>
+                <div style="font-size: 12px; font-weight: bold;">Research Lab</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+3 Population</div>
+            </div>
+            <div class="building-option" data-building-type="barracks" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🪖</div>
+                <div style="font-size: 12px; font-weight: bold;">Barracks</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+2 Population</div>
+            </div>
+            <div class="building-option" data-building-type="defense_system" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🛡️</div>
+                <div style="font-size: 12px; font-weight: bold;">Defense System</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+1 Population</div>
+            </div>
+            <div class="building-option" data-building-type="spy_network" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🕵️</div>
+                <div style="font-size: 12px; font-weight: bold;">Spy Network</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+2 Population</div>
+            </div>
+            <div class="building-option" data-building-type="factory" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🏭</div>
+                <div style="font-size: 12px; font-weight: bold;">Factory</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+4 Population</div>
+            </div>
+            <div class="building-option" data-building-type="command_center" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">🏛️</div>
+                <div style="font-size: 12px; font-weight: bold;">Command Center</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+5 Population</div>
+            </div>
+            <div class="building-option" data-building-type="warehouse" 
+                 style="border: 1px solid #666; padding: 15px; text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.02);">
+                <div style="font-size: 24px; margin-bottom: 5px;">📦</div>
+                <div style="font-size: 12px; font-weight: bold;">Warehouse</div>
+                <div style="font-size: 10px; color: #aaa; margin-top: 5px;">+3 Population</div>
+            </div>
+        </div>
+        
+        <div id="selected-building-info" style="margin-bottom: 15px; padding: 15px; border: 1px solid #333; background: rgba(255, 255, 255, 0.02); display: none;">
+            <div id="building-cost-display" style="font-family: monospace; font-size: 12px;"></div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="confirm-construction" class="form-button" style="padding: 10px 20px;" disabled>
+                [ BUILD SELECTED ]
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Building Costs Reference -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ BUILDING COSTS, EFFECTS, POPULATION & STORAGE ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 15px; font-family: monospace; font-size: 11px;">
+        <div class="building-info-card" data-building-type="command_center" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #ffaa44;">🏛️ COMMAND CENTER:</strong><br>
+            Lv.1: ⚡200 ⛏100 🌾50 | +5 👥<br>
+            Effect: Empire control center<br>
+            <span style="color: #44ff44;">Storage: +500 per level</span><br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 505 👥 | Max Storage Bonus: +50,000</span>
+        </div>
+        <div class="building-info-card" data-building-type="power_plant" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #44ff44;">⚡ POWER PLANT:</strong><br>
+            Lv.1: ⚡100 ⛏200 🌾0 | +2 👥<br>
+            Effect: +50 energy/hour per level<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 202 👥 | Max Production: +5,000/h</span>
+        </div>
+        <div class="building-info-card" data-building-type="mine" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #ffaa44;">⛏️ MINE:</strong><br>
+            Lv.1: ⚡150 ⛏50 🌾100 | +3 👥<br>
+            Effect: +30 minerals/hour per level<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 303 👥 | Max Production: +3,000/h</span>
+        </div>
+        <div class="building-info-card" data-building-type="farm" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #44ffaa;">🌾 FARM:</strong><br>
+            Lv.1: ⚡100 ⛏50 🌾150 | +4 👥<br>
+            Effect: +40 food/hour per level<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 404 👥 | Max Production: +4,000/h</span>
+        </div>
+        <div class="building-info-card" data-building-type="research_lab" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #aa44ff;">🔬 RESEARCH LAB:</strong><br>
+            Lv.1: ⚡300 ⛏200 🌾100 | +3 👥<br>
+            Effect: Enables research<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 403 👥</span>
+        </div>
+        <div class="building-info-card" data-building-type="barracks" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #ff4444;">🪖 BARRACKS:</strong><br>
+            Lv.1: ⚡200 ⛏150 🌾200 | +2 👥<br>
+            Effect: Enables unit recruitment<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 202 👥</span>
+        </div>
+        <div class="building-info-card" data-building-type="defense_system" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #44ff44;">🛡️ DEFENSE SYSTEM:</strong><br>
+            Lv.1: ⚡250 ⛏300 🌾50 | +1 👥<br>
+            Effect: Territory defense bonus<br>
+            <span style="color: #44ff44;">Storage: +200 per level</span><br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 101 👥 | Max Storage Bonus: +20,000</span>
+        </div>
+        <div class="building-info-card" data-building-type="spy_network" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #ffaa44;">🕵️ SPY NETWORK:</strong><br>
+            Lv.1: ⚡200 ⛏100 🌾150 | +2 👥<br>
+            Effect: Intelligence operations<br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 302 👥</span>
+        </div>
+        <div class="building-info-card" data-building-type="factory" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #aa44ff;">🏭 FACTORY:</strong><br>
+            Lv.1: ⚡300 ⛏250 🌾100 | +4 👥<br>
+            Effect: Advanced unit production<br>
+            <span style="color: #44ff44;">Storage: +300 per level</span><br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 404 👥 | Max Storage Bonus: +30,000</span>
+        </div>
+        <div class="building-info-card" data-building-type="warehouse" style="border: 1px solid #666; padding: 10px; cursor: pointer; transition: all 0.2s ease;">
+            <strong style="color: #00aaff;">📦 WAREHOUSE:</strong><br>
+            Lv.1: ⚡150 ⛏400 🌾50 | +3 👥<br>
+            Effect: Dedicated storage facility<br>
+            <span style="color: #44ff44;">Storage: +800 per level</span><br>
+            <span style="color: #aaa;">Max Pop (Lv.100): 303 👥 | Max Storage Bonus: +80,000</span>
+        </div>
+    </div>
+    <div style="margin-top: 15px; text-align: center; color: #44ff44; font-size: 12px; padding: 10px; border: 1px solid #44ff44; background: rgba(68, 255, 68, 0.1);">
+        💾 <strong>STORAGE SYSTEM:</strong> Base capacity: 6,000 each resource | Territory: +100 base | Buildings: Warehouse (+800/level), Command Center (+500/level), Factory (+300/level), Defense System (+200/level)
+    </div>
+</div>
+
+<!-- Building Information Modal -->
+<div id="building-info-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 2px solid #44ff44; padding: 20px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="color: #44ff44; margin: 0;" id="building-modal-title">🏛️ BUILDING INFO</h3>
+            <button id="close-building-info-modal" style="background: none; border: none; color: #ff4444; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div id="building-modal-content" style="font-family: monospace; font-size: 12px; color: #fff;">
+            <!-- Content will be filled by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Building costs data with storage information
+    const buildingCosts = {
+        'command_center': {name: 'Command Center', energy: 200, minerals: 100, food: 50, population: 5, storage: 500},
+        'power_plant': {name: 'Power Plant', energy: 100, minerals: 200, food: 0, population: 2, storage: 0},
+        'mine': {name: 'Mine', energy: 150, minerals: 50, food: 100, population: 3, storage: 0},
+        'farm': {name: 'Farm', energy: 100, minerals: 50, food: 150, population: 4, storage: 0},
+        'research_lab': {name: 'Research Lab', energy: 300, minerals: 200, food: 100, population: 3, storage: 0},
+        'barracks': {name: 'Barracks', energy: 200, minerals: 150, food: 200, population: 2, storage: 0},
+        'defense_system': {name: 'Defense System', energy: 250, minerals: 300, food: 50, population: 1, storage: 200},
+        'spy_network': {name: 'Spy Network', energy: 200, minerals: 100, food: 150, population: 2, storage: 0},
+        'factory': {name: 'Factory', energy: 300, minerals: 250, food: 100, population: 4, storage: 300},
+        'warehouse': {name: 'Warehouse', energy: 150, minerals: 400, food: 50, population: 3, storage: 800}
+    };
+
+    // Current empire resources and storage
+    const empireResources = {
+        energy: {{ empire.energy }},
+        minerals: {{ empire.minerals }},
+        food: {{ empire.food }},
+        energy_storage: {{ empire.energy_storage }},
+        mineral_storage: {{ empire.mineral_storage }},
+        food_storage: {{ empire.food_storage }}
+    };
+
+    let selectedTerritoryId = null;
+    let selectedBuildingType = null;
+
+    // Building slot clicks - RESTORED: Navigate to building detail page
+    document.querySelectorAll('.building-slot.occupied').forEach(slot => {
+        slot.addEventListener('click', function(event) {
+            // Only navigate if the click wasn't on the upgrade button
+            if (!event.target.classList.contains('upgrade-button')) {
+                const buildingId = this.dataset.buildingId;
+                window.location.href = `/game/building/${buildingId}/`;
+            }
+        });
+    });
+
+    // Empty slot clicks - open building selection modal
+    document.querySelectorAll('.building-slot.empty').forEach(slot => {
+        slot.addEventListener('click', function() {
+            selectedTerritoryId = this.dataset.territoryId;
+            showBuildingConstructionModal();
+        });
+    });
+
+    // Building option clicks
+    document.querySelectorAll('.building-option').forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove selection from other options
+            document.querySelectorAll('.building-option').forEach(opt => {
+                opt.style.border = '1px solid #666';
+                opt.style.background = 'rgba(255, 255, 255, 0.02)';
+            });
+            
+            // Highlight selected option
+            this.style.border = '2px solid #44ff44';
+            this.style.background = 'rgba(68, 255, 68, 0.1)';
+            
+            selectedBuildingType = this.dataset.buildingType;
+            updateBuildingInfo();
+        });
+    });
+
+    // Modal handlers
+    const modal = document.getElementById('building-construction-modal');
+    const closeModal = document.getElementById('close-construction-modal');
+    const confirmButton = document.getElementById('confirm-construction');
+    
+    closeModal.addEventListener('click', function() {
+        modal.style.display = 'none';
+        resetModal();
+    });
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            resetModal();
+        }
+    });
+
+    confirmButton.addEventListener('click', async function() {
+        if (!selectedBuildingType || !selectedTerritoryId) return;
+        
+        const data = {
+            building_type: selectedBuildingType,
+            territory_id: selectedTerritoryId
+        };
+        
+        const response = await fetch('/game/api/build/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            NovaGame.showNotification(result.message, 'success');
+            modal.style.display = 'none';
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            NovaGame.showNotification(result.error, 'error');
+        }
+    });
+
+    function showBuildingConstructionModal() {
+        // Find territory info
+        const territoryElement = document.querySelector(`[data-territory-id="${selectedTerritoryId}"]`).closest('.dashboard-panel');
+        const territoryTitle = territoryElement.querySelector('h4').textContent.trim();
+        
+        document.getElementById('modal-territory-info').textContent = territoryTitle;
+        modal.style.display = 'block';
+    }
+
+    function updateBuildingInfo() {
+        if (!selectedBuildingType) return;
+        
+        const cost = buildingCosts[selectedBuildingType];
+        const canAfford = empireResources.energy >= cost.energy && 
+                         empireResources.minerals >= cost.minerals && 
+                         empireResources.food >= cost.food;
+        
+        const infoDiv = document.getElementById('selected-building-info');
+        const costDiv = document.getElementById('building-cost-display');
+        
+        costDiv.innerHTML = `
+            <strong>${cost.name}</strong><br>
+            Cost: ⚡${cost.energy} ⛏${cost.minerals} 🌾${cost.food}<br>
+            Population: +${cost.population} 👥<br>
+            ${canAfford ? '<span style="color: #44ff44;">✓ AFFORDABLE</span>' : '<span style="color: #ff4444;">⚠ INSUFFICIENT RESOURCES</span>'}
+        `;
+        
+        infoDiv.style.display = 'block';
+        
+        const confirmButton = document.getElementById('confirm-construction');
+        confirmButton.disabled = !canAfford;
+        confirmButton.style.background = canAfford ? '#44ff44' : '#ff4444';
+    }
+
+    function resetModal() {
+        selectedTerritoryId = null;
+        selectedBuildingType = null;
+        
+        document.querySelectorAll('.building-option').forEach(opt => {
+            opt.style.border = '1px solid #666';
+            opt.style.background = 'rgba(255, 255, 255, 0.02)';
+        });
+        
+        document.getElementById('selected-building-info').style.display = 'none';
+        document.getElementById('confirm-construction').disabled = true;
+    }
+
+    // Function to attach upgrade button listener - REUSABLE
+    function attachUpgradeButtonListener(button) {
+        button.addEventListener('click', async function(event) {
+            event.preventDefault(); // Prevent any navigation
+            event.stopPropagation(); // Stop event bubbling
+            
+            const buildingId = this.dataset.buildingId;
+            const buildingType = this.dataset.buildingType;
+            const currentLevel = parseInt(this.dataset.currentLevel);
+            
+            // Get building name for display
+            const buildingNames = {
+                'command_center': 'Royal Castle',
+                'power_plant': 'Windmill',
+                'mine': 'Mining Shaft',
+                'farm': 'Agricultural Center',
+                'research_lab': 'Royal Academy',
+                'barracks': 'Training Grounds',
+                'defense_system': 'Guard Tower',
+                'spy_network': 'Intelligence Network',
+                'factory': 'Royal Workshop',
+                'warehouse': 'Storage Depot'
+            };
+            const buildingName = buildingNames[buildingType] || buildingType.replace('_', ' ').toUpperCase();
+            
+            if (currentLevel >= 100) {
+                NovaGame.showNotification('Building is already at maximum level!', 'error');
+                return;
+            }
+            
+            // Calculate upgrade cost
+            const baseCost = buildingCosts[buildingType];
+            const levelMultiplier = Math.pow(currentLevel + 1, 1.5);
+            const upgradeCost = {
+                energy: Math.floor(baseCost.energy * levelMultiplier),
+                minerals: Math.floor(baseCost.minerals * levelMultiplier),
+                food: Math.floor(baseCost.food * levelMultiplier)
+            };
+            
+            // Check if player can afford upgrade
+            if (empireResources.energy < upgradeCost.energy || 
+                empireResources.minerals < upgradeCost.minerals || 
+                empireResources.food < upgradeCost.food) {
+                NovaGame.showNotification(`Insufficient resources! Need: ⚡${upgradeCost.energy} ⛏${upgradeCost.minerals} 🌾${upgradeCost.food}`, 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/game/api/upgrade-building/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        building_id: buildingId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    NovaGame.showNotification(`${buildingName} upgrade started!`, 'success');
+                    
+                    // Update resources
+                    empireResources.energy = result.empire.energy;
+                    empireResources.minerals = result.empire.minerals;
+                    empireResources.food = result.empire.food;
+                    
+                    // Replace upgrade button with progress bar INLINE
+                    const buildingSlot = this.closest('.building-slot');
+                    const buttonContainer = this.parentNode;
+                    buttonContainer.innerHTML = `
+                        <div style="margin-top: 5px;">
+                            <div style="font-size: 9px; color: #44ff44; margin-bottom: 2px; font-weight: bold;">${buildingName}</div>
+                            <div style="font-size: 10px; color: #ffaa44; margin-bottom: 3px;">⏱️ UPGRADING</div>
+                            <div style="background: #333; border: 1px solid #666; height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div class="upgrade-progress" data-building-id="${buildingId}" 
+                                     data-end-time="${result.upgrade_end_time}"
+                                     style="background: linear-gradient(90deg, #44ff44, #ffaa44); height: 100%; width: 0%; transition: width 0.3s ease;">
+                                </div>
+                            </div>
+                            <div style="font-size: 9px; color: #aaa; margin-top: 2px;" id="upgrade-time-${buildingId}">
+                                Starting...
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Start progress tracking with server end time
+                    startProgressTracking(buildingId, result.upgrade_end_time, buildingName);
+                } else {
+                    NovaGame.showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                NovaGame.showNotification('Upgrade failed: ' + error.message, 'error');
+            }
+        });
+    }
+    
+    // Building upgrade handlers - UPDATED TO USE REUSABLE FUNCTION
+    document.querySelectorAll('.upgrade-button').forEach(button => {
+        attachUpgradeButtonListener(button);
+    });
+    
+    // Enhanced progress tracking function using server end time - FIXED
+    function startProgressTracking(buildingId, endTimeString, buildingName) {
+        const progressBar = document.querySelector(`.upgrade-progress[data-building-id="${buildingId}"]`);
+        const timeDisplay = document.getElementById(`upgrade-time-${buildingId}`);
+        
+        if (!progressBar || !timeDisplay) {
+            console.log(`❌ Progress elements not found for building ${buildingId}`);
+            console.log(`   - Progress bar found: ${!!progressBar}`);
+            console.log(`   - Time display found: ${!!timeDisplay}`);
+            return;
+        }
+        
+        console.log(`🔄 Starting progress tracking for ${buildingName} (${buildingId}), end time: ${endTimeString}`);
+        
+        const endTime = new Date(endTimeString);
+        const now = new Date();
+        
+        console.log(`📅 Times: now=${now.toISOString()}, end=${endTime.toISOString()}`);
+        
+        // Calculate upgrade duration from Django settings (level * 1 minute)
+        const buildingSlot = progressBar.closest('.building-slot');
+        const levelElement = buildingSlot.querySelector('[style*="font-size: 16px"]');
+        
+        if (!levelElement) {
+            console.log(`❌ Could not find level element for building ${buildingId}`);
+            // Fallback: try to get level from upgrade API
+            timeDisplay.textContent = 'Loading...';
+            return;
+        }
+        
+        const levelText = levelElement.textContent;
+        const currentLevel = parseInt(levelText.replace('Lv.', ''));
+        
+        console.log(`📊 Building level: ${levelText} -> ${currentLevel}`);
+        
+        if (isNaN(currentLevel)) {
+            console.log(`❌ Invalid level parsed: ${levelText}`);
+            timeDisplay.textContent = 'Invalid level';
+            return;
+        }
+        
+        const upgradeDurationMinutes = currentLevel * 1; // 1 minute per level (matches Django BUILDING_TIME_MULTIPLIER)
+        const upgradeDurationMs = upgradeDurationMinutes * 60 * 1000;
+        
+        // Calculate start time based on end time and duration
+        const startTime = new Date(endTime.getTime() - upgradeDurationMs);
+        
+        console.log(`📊 Upgrade details: level=${currentLevel}, duration=${upgradeDurationMinutes}min, start=${startTime.toISOString()}, end=${endTime.toISOString()}`);
+        
+        const updateProgress = () => {
+            const now = new Date();
+            const remaining = endTime - now;
+            const elapsed = now - startTime;
+            const totalDuration = upgradeDurationMs;
+            
+            console.log(`⏱️ Progress update: remaining=${remaining}ms, elapsed=${elapsed}ms, total=${totalDuration}ms`);
+            
+            if (remaining <= 0) {
+                // Upgrade completed
+                progressBar.style.width = '100%';
+                timeDisplay.textContent = 'Completed!';
+                timeDisplay.style.color = '#44ff44';
+                
+                // Show completion notification
+                NovaGame.showNotification(`${buildingName} upgrade completed!`, 'success');
+                
+                // Replace with upgrade button after 2 seconds
+                setTimeout(() => {
+                    const buildingSlot = progressBar.closest('.building-slot');
+                    const currentLevelElement = buildingSlot.querySelector('[style*="font-size: 16px"]');
+                    const currentLevel = parseInt(currentLevelElement.textContent.replace('Lv.', ''));
+                    const newLevel = currentLevel + 1;
+                    
+                    // Update level display
+                    currentLevelElement.textContent = `Lv.${newLevel}`;
+                    
+                    // Replace progress bar with upgrade button
+                    const buttonContainer = progressBar.closest('div').parentNode;
+                    buttonContainer.innerHTML = `
+                        <button class="upgrade-button" 
+                                data-building-id="${buildingId}" 
+                                data-building-type="${buildingSlot.dataset.buildingType || 'unknown'}"
+                                data-current-level="${newLevel}"
+                                style="padding: 4px 6px; font-size: 9px; background: #44ff44; color: #000; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; width: 100%;">
+                            <div style="margin-bottom: 2px;">⬆️ UPGRADE</div>
+                            <div style="font-size: 9px; color: #000; line-height: 1.2; font-weight: bold;">
+                                Next upgrade costs
+                            </div>
+                        </button>
+                    `;
+                    
+                    // Re-attach event listener to new button
+                    const newButton = buttonContainer.querySelector('.upgrade-button');
+                    if (newButton) {
+                        attachUpgradeButtonListener(newButton);
+                    }
+                    
+                }, 2000);
+                
+                return; // Stop the interval
+            }
+            
+            // Calculate progress percentage (0-100)
+            const progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
+            progressBar.style.width = progress.toFixed(1) + '%';
+            
+            // Update time display with better formatting
+            const totalSeconds = Math.ceil(remaining / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            
+            let timeText;
+            if (minutes > 0) {
+                timeText = `${minutes}m ${seconds}s left`;
+            } else {
+                timeText = `${seconds}s left`;
+            }
+            
+            timeDisplay.textContent = timeText;
+            timeDisplay.style.color = '#ffaa44';
+            
+            console.log(`📊 Progress: ${progress.toFixed(1)}%, Time: ${timeText}`);
+            
+            // Continue updating every second
+            setTimeout(updateProgress, 1000);
+        };
+        
+        // Start the progress update immediately
+        updateProgress();
+    }
+    
+    // Initialize progress bars for already upgrading buildings on page load - ENHANCED
+    console.log('🏗️ Initializing building upgrade progress tracking...');
+    
+    // Look for buildings that are currently upgrading
+    document.querySelectorAll('.upgrade-progress').forEach(progressBar => {
+        const buildingId = progressBar.dataset.buildingId;
+        
+        if (!buildingId) {
+            console.log('❌ No building ID found for progress bar');
+            return;
+        }
+        
+        console.log(`🔍 Found progress bar for building ${buildingId}`);
+        
+        // Try to get end time from data attribute first
+        let endTime = progressBar.dataset.endTime;
+        
+        if (!endTime) {
+            // If no end time in data attribute, fetch from server
+            console.log(`📡 Fetching upgrade status for building ${buildingId}...`);
+            
+            fetch('/game/api/building-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    building_id: buildingId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.upgrade_end_time) {
+                    console.log(`✅ Got upgrade end time for building ${buildingId}: ${data.upgrade_end_time}`);
+                    
+                    const buildingSlot = progressBar.closest('.building-slot');
+                    const buildingType = buildingSlot?.dataset.buildingType || 'building';
+                    
+                    // Get building name
+                    const buildingNames = {
+                        'command_center': 'Royal Castle',
+                        'power_plant': 'Windmill',
+                        'mine': 'Mining Shaft',
+                        'farm': 'Agricultural Center',
+                        'research_lab': 'Royal Academy',
+                        'barracks': 'Training Grounds',
+                        'defense_system': 'Guard Tower',
+                        'spy_network': 'Intelligence Network',
+                        'factory': 'Royal Workshop',
+                        'warehouse': 'Storage Depot'
+                    };
+                    const buildingName = buildingNames[buildingType] || buildingType.replace('_', ' ').toUpperCase();
+                    
+                    startProgressTracking(buildingId, data.upgrade_end_time, buildingName);
+                } else {
+                    console.log(`❌ No upgrade in progress for building ${buildingId}`);
+                    // Hide the progress bar if no upgrade is active
+                    const timeDisplay = document.getElementById(`upgrade-time-${buildingId}`);
+                    if (timeDisplay) {
+                        timeDisplay.textContent = 'No upgrade active';
+                        timeDisplay.style.color = '#666';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error(`❌ Error fetching building status for ${buildingId}:`, error);
+            });
+        } else {
+            // Use the end time from data attribute
+            const buildingSlot = progressBar.closest('.building-slot');
+            const buildingType = buildingSlot?.dataset.buildingType || 'building';
+            
+            const buildingNames = {
+                'command_center': 'Royal Castle',
+                'power_plant': 'Windmill',
+                'mine': 'Mining Shaft',
+                'farm': 'Agricultural Center',
+                'research_lab': 'Royal Academy',
+                'barracks': 'Training Grounds',
+                'defense_system': 'Guard Tower',
+                'spy_network': 'Intelligence Network',
+                'factory': 'Royal Workshop',
+                'warehouse': 'Storage Depot'
+            };
+            const buildingName = buildingNames[buildingType] || buildingType.replace('_', ' ').toUpperCase();
+            
+            startProgressTracking(buildingId, endTime, buildingName);
+        }
+    });
+    
+    console.log('✅ Building progress tracking initialization complete');
+
+    // Building info card clicks - show detailed information modal
+    document.querySelectorAll('.building-info-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const buildingType = this.dataset.buildingType;
+            showBuildingInfoModal(buildingType);
+        });
+    });
+
+    // Building info modal handlers
+    const buildingInfoModal = document.getElementById('building-info-modal');
+    const closeBuildingInfoModal = document.getElementById('close-building-info-modal');
+    
+    closeBuildingInfoModal.addEventListener('click', function() {
+        buildingInfoModal.style.display = 'none';
+    });
+    
+    buildingInfoModal.addEventListener('click', function(e) {
+        if (e.target === buildingInfoModal) {
+            buildingInfoModal.style.display = 'none';
+        }
+    });
+
+    function showBuildingInfoModal(buildingType) {
+        const buildingData = getBuildingDetailedInfo(buildingType);
+        
+        document.getElementById('building-modal-title').innerHTML = buildingData.icon + ' ' + buildingData.name.toUpperCase();
+        document.getElementById('building-modal-content').innerHTML = buildingData.content;
+        
+        buildingInfoModal.style.display = 'block';
+    }
+
+    function getBuildingDetailedInfo(buildingType) {
+        const buildingDetails = {
+            'command_center': {
+                name: 'Command Center',
+                icon: '🏛️',
+                content: `
+                    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #ffaa44; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            The Royal Castle stands as the beating heart of your medieval kingdom. Within its stone halls, 
+                            royal scribes coordinate messengers across your realm while ancient communication crystals 
+                            relay orders to distant territories. The great throne room displays detailed maps and reports 
+                            from every corner of your domain. This is where kings are crowned and kingdoms are governed.
+                            The deeper the castle extends with underground chambers, the more royal staff it can house.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡200 ⛏100 🌾50<br>
+                                👥 Population: +5<br>
+                                💾 Storage Bonus: +500<br>
+                                🏗️ Construction Time: 3 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">⚡ MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 505<br>
+                                💾 Storage Bonus: +50,000<br>
+                                🎯 Special: Unlocks advanced diplomacy<br>
+                                📈 Upgrade Cost Multiplier: 1.5x per level
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🔍 STRATEGIC IMPORTANCE</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Highest population density per level - essential for kingdom growth</li>
+                            <li>Massive storage bonus - your kingdom's royal treasury</li>
+                            <li>Required for advanced diplomatic actions and royal decrees</li>
+                            <li>Unlocks special kingdom abilities at higher levels</li>
+                            <li>Symbol of your kingdom's power and administrative efficiency</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Build early in conquered lands to establish royal control</li>
+                            <li>Upgrade first for maximum storage and population benefits</li>
+                            <li>Essential for managing large kingdoms efficiently</li>
+                            <li>Protects against resource overflow when production is high</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'power_plant': {
+                name: 'Power Plant',
+                icon: '⚡',
+                content: `
+                    <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #44ff44; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Ancient windmills and magical waterwheels harness the natural forces to power your kingdom. 
+                            These mystical installations channel wind, water, and arcane energy crystals to fuel your 
+                            realm's endless need for power. Enchanted mechanisms distribute energy to forges, mills, 
+                            and magical research towers throughout your domain. Each upgrade adds more windmills and 
+                            more sophisticated magical energy conversion systems.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡100 ⛏200 🌾0<br>
+                                👥 Population: +2<br>
+                                ⚡ Energy Production: +50/hour<br>
+                                🏗️ Construction Time: 2 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">⚡ MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 202<br>
+                                ⚡ Energy Production: +5,000/hour<br>
+                                🎯 Special: Powers advanced magical technologies<br>
+                                🔋 Efficiency Rating: 98.7%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">⚡ ENERGY: THE LIFEBLOOD OF KINGDOMS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Powers all military units, buildings, and magical research</li>
+                            <li>Required for operating forges and advanced crafting</li>
+                            <li>Higher energy production = faster kingdom expansion</li>
+                            <li>Essential for maintaining large military forces</li>
+                            <li>Enables rapid construction and upgrade projects</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Build multiple windmills early for rapid growth</li>
+                            <li>Energy is used for most kingdom activities - prioritize it</li>
+                            <li>Each level provides exponentially more power</li>
+                            <li>Combine with magical research for even greater efficiency</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'mine': {
+                name: 'Mine',
+                icon: '⛏️',
+                content: `
+                    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #ffaa44; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Deep beneath the earth, skilled miners and dwarven workers extract precious metals, 
+                            gemstones, and rare stone essential for castle construction and weapon forging. These vast 
+                            underground networks employ both traditional mining techniques and magical ore-sensing 
+                            to harvest the building blocks of your kingdom. Each upgrade deepens the mine shafts 
+                            and adds more sophisticated extraction methods and reinforced tunnels.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 10px;">
+                            <h5 style="color: #ffaa44; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡150 ⛏50 🌾100<br>
+                                👥 Population: +3<br>
+                                ⛏️ Mineral Production: +30/hour<br>
+                                🏗️ Construction Time: 3 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 10px;">
+                            <h5 style="color: #ffaa44; margin-top: 0;">⛏️ MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 303<br>
+                                ⛏️ Mineral Production: +3,000/hour<br>
+                                🎯 Special: Rare gemstone extraction<br>
+                                💎 Depth: 50 levels underground
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">⛏️ MINERALS: THE FOUNDATION OF KINGDOMS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for all castle construction and fortifications</li>
+                            <li>Required for forging advanced weapons and armor</li>
+                            <li>Key component in defensive walls and siege engines</li>
+                            <li>Needed for upgrading buildings and infrastructure</li>
+                            <li>Enables the creation of bridges and grand monuments</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for military expansion - build early</li>
+                            <li>Mountain territories provide natural mineral bonuses</li>
+                            <li>Higher levels unlock rare precious metals</li>
+                            <li>Pairs well with forges for maximum efficiency</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'farm': {
+                name: 'Farm',
+                icon: '🌾',
+                content: `
+                    <div style="background: rgba(68, 255, 170, 0.1); border: 1px solid #44ffaa; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #44ffaa; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Vast fertile fields and livestock pastures create the agricultural backbone of your kingdom. 
+                            Using crop rotation, selective breeding, and seasonal festivals, these agricultural centers 
+                            feed entire populations while producing specialized provisions for military campaigns and 
+                            royal feasts. Each upgrade adds new fields, barns, and more sophisticated farming 
+                            techniques passed down through generations of farmers.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(68, 255, 170, 0.1); border: 1px solid #44ffaa; padding: 10px;">
+                            <h5 style="color: #44ffaa; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡100 ⛏50 🌾150<br>
+                                👥 Population: +4<br>
+                                🌾 Food Production: +40/hour<br>
+                                🏗️ Construction Time: 2 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(68, 255, 170, 0.1); border: 1px solid #44ffaa; padding: 10px;">
+                            <h5 style="color: #44ffaa; margin-top: 0;">🌾 MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 404<br>
+                                🌾 Food Production: +4,000/hour<br>
+                                🎯 Special: Sustains massive populations<br>
+                                🌱 Crop Varieties: 247 different types
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🌾 FOOD: SUSTAINING KINGDOM LIFE</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Required to maintain and grow population levels</li>
+                            <li>Essential for training and maintaining military forces</li>
+                            <li>Needed for scholar nutrition and research efficiency</li>
+                            <li>Supports colonization of new territories</li>
+                            <li>Critical during long sieges and harsh winters</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Highest population growth per level - build multiple</li>
+                            <li>Forest and fertile territories provide natural food bonuses</li>
+                            <li>Essential for maintaining large kingdoms</li>
+                            <li>Prevents population decline during resource shortages</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'research_lab': {
+                name: 'Research Lab',
+                icon: '🔬',
+                content: `
+                    <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #aa44ff; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Within these grand libraries and magical academies, the greatest scholars and court wizards 
+                            push the boundaries of known knowledge. Ancient tomes contain forgotten secrets while 
+                            alchemical laboratories test new discoveries that can reshape the very nature of warfare, 
+                            diplomacy, and civilization itself. Each upgrade adds more extensive libraries, magical 
+                            equipment, and attracts brilliant scholars from across the realm.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 10px;">
+                            <h5 style="color: #aa44ff; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡300 ⛏200 🌾100<br>
+                                👥 Population: +3<br>
+                                🔬 Effect: Enables magical research<br>
+                                🏗️ Construction Time: 5 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 10px;">
+                            <h5 style="color: #aa44ff; margin-top: 0;">🔬 MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 403<br>
+                                🎯 Special: Advanced magical tech unlocks<br>
+                                🧪 Research Speed: +500%<br>
+                                🌌 Discoveries: Ancient knowledge revealed
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🔬 RESEARCH: THE PATH TO POWER</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Unlocks advanced military units and magical technologies</li>
+                            <li>Improves production efficiency across all buildings</li>
+                            <li>Enables long-distance communication and magical travel</li>
+                            <li>Develops defensive enchantments and magical shields</li>
+                            <li>Creates new diplomatic and economic opportunities</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for long-term kingdom success</li>
+                            <li>Higher levels dramatically reduce research time</li>
+                            <li>Multiple academies can research different subjects</li>
+                            <li>Combines with other buildings for magical synergy bonuses</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'barracks': {
+                name: 'Barracks',
+                icon: '🪖',
+                content: `
+                    <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #ff4444; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            The thunderous sound of marching boots echoes through these massive military compounds. Here, peasant 
+                            recruits are forged into elite knights and soldiers through rigorous training in swordplay, archery, 
+                            and battlefield tactics. Training grounds test their skills with medieval weapons while mock castle 
+                            sieges prepare them for real warfare. Each upgrade adds specialized training facilities for 
+                            different unit types and veteran instructors.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; padding: 10px;">
+                            <h5 style="color: #ff4444; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡200 ⛏150 🌾200<br>
+                                👥 Population: +2<br>
+                                🪖 Effect: Enables unit recruitment<br>
+                                🏗️ Construction Time: 4 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; padding: 10px;">
+                            <h5 style="color: #ff4444; margin-top: 0;">🪖 MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 202<br>
+                                🎯 Special: Elite knight training<br>
+                                ⚔️ Training Speed: +300%<br>
+                                🏆 Unit Quality: Legendary warriors
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🪖 MILITARY: THE SWORD OF THE REALM</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for territory conquest and defense</li>
+                            <li>Trains knights, archers, cavalry, and siege engines</li>
+                            <li>Higher levels reduce recruitment time significantly</li>
+                            <li>Enables advanced military strategies and formations</li>
+                            <li>Required for maintaining control over vast kingdoms</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Build in every territory for rapid military response</li>
+                            <li>Higher levels unlock advanced unit types</li>
+                            <li>Essential for both offense and defense</li>
+                            <li>Pairs perfectly with castle fortifications</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'defense_system': {
+                name: 'Defense System',
+                icon: '🛡️',
+                content: `
+                    <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #44ff44; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Towering stone walls and defensive towers create an impenetrable barrier around your 
+                            territories. Archer posts and catapult platforms defend against approaching threats with 
+                            deadly precision. Underground treasure vaults provide secure storage for gold and precious 
+                            resources, while watchtowers detect enemies from great distances. Each upgrade adds more 
+                            sophisticated defensive structures and deeper underground storage chambers.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡250 ⛏300 🌾50<br>
+                                👥 Population: +1<br>
+                                🛡️ Defense Bonus: Territory protection<br>
+                                💾 Storage: +200 per level<br>
+                                🏗️ Construction Time: 4 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; padding: 10px;">
+                            <h5 style="color: #44ff44; margin-top: 0;">🛡️ MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 101<br>
+                                💾 Storage Bonus: +20,000<br>
+                                🎯 Special: Massive fortress walls<br>
+                                🏹 Defense Towers: 50 archer posts
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🛡️ DEFENSE: THE SHIELD OF THE REALM</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Provides significant defensive bonuses to defending armies</li>
+                            <li>Protects valuable resources in secure underground vaults</li>
+                            <li>Deters attacks from weaker enemies automatically</li>
+                            <li>Extends early warning detection systems</li>
+                            <li>Creates safe zones for civilian population growth</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for protecting valuable territories</li>
+                            <li>Excellent storage bonus makes resources safer</li>
+                            <li>Builds quickly but requires significant stone</li>
+                            <li>Combine with barracks for maximum territorial security</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'spy_network': {
+                name: 'Spy Network',
+                icon: '🕵️',
+                content: `
+                    <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #ffaa44; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Hidden beneath taverns and merchant guilds, vast intelligence networks coordinate espionage 
+                            operations across the realm. Secret passages protect covert communications while master 
+                            disguise artists train operatives for deep cover missions. From here, spies infiltrate enemy 
+                            courts, gather critical intelligence, and execute covert operations that can change the course 
+                            of wars. Each upgrade adds more sophisticated spy training and creates more skilled operatives.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 10px;">
+                            <h5 style="color: #ffaa44; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡200 ⛏100 🌾150<br>
+                                👥 Population: +2<br>
+                                🕵️ Effect: Intelligence operations<br>
+                                🏗️ Construction Time: 4 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(255, 170, 68, 0.1); border: 1px solid #ffaa44; padding: 10px;">
+                            <h5 style="color: #ffaa44; margin-top: 0;">🕵️ MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 302<br>
+                                🎯 Special: Realm-wide intelligence network<br>
+                                🔍 Detection Range: Entire kingdom<br>
+                                🎭 Active Agents: 1,000+ spies
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🕵️ ESPIONAGE: KNOWLEDGE IS POWER</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Trains spy units for reconnaissance missions</li>
+                            <li>Gathers intelligence on enemy forces and resources</li>
+                            <li>Detects incoming attacks earlier than standard scouts</li>
+                            <li>Enables sabotage operations against enemy infrastructure</li>
+                            <li>Provides diplomatic intelligence for negotiations</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for gathering enemy intelligence before attacks</li>
+                            <li>Higher levels train more effective spy units</li>
+                            <li>Knowledge of enemy strength prevents costly mistakes</li>
+                            <li>Critical for large-scale strategic planning</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'factory': {
+                name: 'Factory',
+                icon: '🏭',
+                content: `
+                    <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #aa44ff; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Massive workshop complexes stretch across courtyards, where master craftsmen and guild 
+                            artisans create advanced military equipment with perfect skill. These industrial centers 
+                            combine raw materials with traditional craftsmanship to produce siege engines, advanced 
+                            armor, and other sophisticated war machines. Each upgrade adds more workshop space and 
+                            unlocks production of increasingly advanced equipment types.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 10px;">
+                            <h5 style="color: #aa44ff; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                💰 Cost: ⚡300 ⛏250 🌾100<br>
+                                👥 Population: +4<br>
+                                🏭 Effect: Advanced equipment production<br>
+                                💾 Storage: +300 per level<br>
+                                🏗️ Construction Time: 6 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(170, 68, 255, 0.1); border: 1px solid #aa44ff; padding: 10px;">
+                            <h5 style="color: #aa44ff; margin-top: 0;">🏭 MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 404<br>
+                                💾 Storage Bonus: +30,000<br>
+                                🎯 Special: Elite equipment mass production<br>
+                                🔨 Workshop Halls: 20 major guilds
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">🏭 ADVANCED CRAFTSMANSHIP</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Required for producing advanced military units (siege engines, heavy cavalry)</li>
+                            <li>Dramatically reduces production time for all units</li>
+                            <li>Provides significant storage capacity for materials</li>
+                            <li>Enables mass production of multiple unit types</li>
+                            <li>Critical for maintaining technological superiority</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Essential for late-game military dominance</li>
+                            <li>High population and storage make it very valuable</li>
+                            <li>Expensive but provides excellent long-term benefits</li>
+                            <li>Works best when combined with royal academies</li>
+                        </ul>
+                    </div>
+                `
+            },
+            'warehouse': {
+                name: 'Warehouse',
+                icon: '📦',
+                content: `
+                    <div style="background: rgba(0, 170, 255, 0.1); border: 1px solid #00aaff; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #00aaff; margin-top: 0;">📜 LORE & PURPOSE</h4>
+                        <p style="line-height: 1.6; margin: 0;">
+                            Vast underground storage complexes utilize traditional preservation methods and magical 
+                            preservation fields to store massive quantities of resources. Climate-controlled chambers 
+                            maintain perfect conditions for grain, preserved goods, and valuable materials. Automated 
+                            cart systems and worker networks ensure rapid distribution to other facilities when needed. 
+                            Each upgrade dramatically expands storage capacity and adds more sophisticated preservation methods.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="background: rgba(0, 170, 255, 0.1); border: 1px solid #00aaff; padding: 10px;">
+                            <h5 style="color: #00aaff; margin-top: 0;">📊 BASE STATS (Level 1)</h5>
+                            <div style="line-height: 1.5;">
+                                �� Cost: ⚡150 ⛏400 🌾50<br>
+                                👥 Population: +3<br>
+                                💾 Storage: +800 per level<br>
+                                🏗️ Construction Time: 5 minutes
+                            </div>
+                        </div>
+                        <div style="background: rgba(0, 170, 255, 0.1); border: 1px solid #00aaff; padding: 10px;">
+                            <h5 style="color: #00aaff; margin-top: 0;">📦 MAX POTENTIAL (Level 100)</h5>
+                            <div style="line-height: 1.5;">
+                                👥 Total Population: 303<br>
+                                💾 Storage Bonus: +80,000<br>
+                                🎯 Special: Magical preservation chambers<br>
+                                📊 Efficiency: 99.9% preservation rate
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(68, 255, 255, 0.1); border: 1px solid #44ffff; padding: 10px; margin-bottom: 15px;">
+                        <h5 style="color: #44ffff; margin-top: 0;">📦 ULTIMATE STORAGE SOLUTION</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Highest storage bonus per level of any building</li>
+                            <li>Prevents resource overflow during high production</li>
+                            <li>Essential for stockpiling resources for major campaigns</li>
+                            <li>Protects against economic warfare and siege blockades</li>
+                            <li>Enables long-term strategic resource planning</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 68, 0.1); border: 1px solid #ffff44; padding: 10px;">
+                        <h5 style="color: #ffff44; margin-top: 0;">💡 PRO TIPS</h5>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                            <li>Best storage-to-cost ratio in the game</li>
+                            <li>Essential for kingdoms with high production</li>
+                            <li>Build early to prevent resource waste</li>
+                            <li>Perfect for supporting extended military campaigns</li>
+                        </ul>
+                    </div>
+                `
+            }
+        };
+        
+        return buildingDetails[buildingType] || {
+            name: 'Unknown Building',
+            icon: '🏗️',
+            content: '<p>Building information not available.</p>'
+        };
+    }
+});
+</script>
+
+<!-- Hidden CSRF token for API calls -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<style>
+.building-slot {
+    transition: all 0.2s ease;
+}
+
+.building-slot:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(68, 255, 68, 0.3);
+}
+
+.building-slot.empty:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: #44ff44 !important;
+}
+
+.building-option {
+    transition: all 0.2s ease;
+}
+
+.building-option:hover {
+    border-color: #44ff44 !important;
+    background: rgba(68, 255, 68, 0.05) !important;
+}
+
+.building-info-card:hover {
+    border-color: #44ff44 !important;
+    background: rgba(68, 255, 68, 0.05) !important;
+    transform: scale(1.02);
+}
+
+.form-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-green {
+    0% { background-color: rgba(68, 255, 68, 0.3); transform: scale(1.05); }
+    50% { background-color: rgba(68, 255, 68, 0.6); transform: scale(1.1); }
+    100% { background-color: transparent; transform: scale(1); }
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.resource-updating {
+    animation: pulse 2s infinite;
+}
+</style>
+
+{% endblock %} 

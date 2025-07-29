@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Galactic Trading Network - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                          GALACTIC TRADING NETWORK                                   │
+    │                        {{ empire.name|upper }} TRADE BUREAU                       │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Current Empire Resources -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ YOUR TREASURY ]</h3>
+    <div style="font-family: monospace; font-size: 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div style="text-align: center; padding: 15px; border: 1px solid #44ff44; background: rgba(68, 255, 68, 0.1);">
+            ⚡ ENERGY<br>
+            <span style="font-size: 18px; font-weight: bold; color: #44ff44;">{{ empire.energy:,}}</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #ffaa44; background: rgba(255, 170, 68, 0.1);">
+            ⛏ MINERALS<br>
+            <span style="font-size: 18px; font-weight: bold; color: #ffaa44;">{{ empire.minerals:,}}</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #44ffaa; background: rgba(68, 255, 170, 0.1);">
+            🌾 FOOD<br>
+            <span style="font-size: 18px; font-weight: bold; color: #44ffaa;">{{ empire.food:,}}</span>
+        </div>
+        <div style="text-align: center; padding: 15px; border: 1px solid #aa44ff; background: rgba(170, 68, 255, 0.1);">
+            🔬 TECHNOLOGY<br>
+            <span style="font-size: 18px; font-weight: bold; color: #aa44ff;">{{ empire.technology:,}}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Create New Trade Offer -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ CREATE TRADE OFFER ]</h3>
+    
+    <form id="trade-offer-form" style="margin-top: 15px;">
+        {% csrf_token %}
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <!-- Left Column: What you're offering -->
+            <div>
+                <h4 style="color: #ff4444; margin-bottom: 15px;">💰 YOU OFFER:</h4>
+                
+                <div class="form-row">
+                    <label class="form-label">⚡ Energy:</label>
+                    <input type="number" name="offer_energy" class="form-input" style="width: 150px;" 
+                           min="0" max="{{ empire.energy }}" value="0">
+                    <span style="color: #666; font-size: 12px;">/ {{ empire.energy:,}} available</span>
+                </div>
+                
+                <div class="form-row">
+                    <label class="form-label">⛏ Minerals:</label>
+                    <input type="number" name="offer_minerals" class="form-input" style="width: 150px;" 
+                           min="0" max="{{ empire.minerals }}" value="0">
+                    <span style="color: #666; font-size: 12px;">/ {{ empire.minerals:,}} available</span>
+                </div>
+                
+                <div class="form-row">
+                    <label class="form-label">🌾 Food:</label>
+                    <input type="number" name="offer_food" class="form-input" style="width: 150px;" 
+                           min="0" max="{{ empire.food }}" value="0">
+                    <span style="color: #666; font-size: 12px;">/ {{ empire.food:,}} available</span>
+                </div>
+            </div>
+            
+            <!-- Right Column: What you want -->
+            <div>
+                <h4 style="color: #44ff44; margin-bottom: 15px;">💎 YOU REQUEST:</h4>
+                
+                <div class="form-row">
+                    <label class="form-label">⚡ Energy:</label>
+                    <input type="number" name="request_energy" class="form-input" style="width: 150px;" 
+                           min="0" value="0">
+                </div>
+                
+                <div class="form-row">
+                    <label class="form-label">⛏ Minerals:</label>
+                    <input type="number" name="request_minerals" class="form-input" style="width: 150px;" 
+                           min="0" value="0">
+                </div>
+                
+                <div class="form-row">
+                    <label class="form-label">🌾 Food:</label>
+                    <input type="number" name="request_food" class="form-input" style="width: 150px;" 
+                           min="0" value="0">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-row" style="margin-top: 20px;">
+            <label class="form-label">Trading Partner:</label>
+            <select name="receiver_id" class="form-input" style="width: 200px;" required>
+                <option value="">Select Empire...</option>
+                {% for partner in all_empires %}
+                <option value="{{ partner.id }}">{{ partner.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <label class="form-label">Trade Message:</label>
+            <textarea name="message" class="form-input" style="width: 100%; height: 80px;" 
+                      placeholder="Optional message to trading partner..."></textarea>
+        </div>
+        
+        <div class="form-row">
+            <button type="submit" class="form-button">[ SEND TRADE OFFER ]</button>
+        </div>
+    </form>
+</div>
+
+<!-- Active Trade Offers -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+    
+    <!-- Sent Offers -->
+    <div class="dashboard-panel">
+        <h3>[ SENT OFFERS ]</h3>
+        
+        {% if sent_trades %}
+        <div style="max-height: 400px; overflow-y: auto;">
+            {% for trade in sent_trades %}
+            <div style="border: 1px solid #666; padding: 15px; margin: 10px 0; background: rgba(255, 255, 255, 0.02);">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
+                    <strong style="color: #ffaa44;">→ {{ trade.receiver.name }}</strong>
+                    <span style="color: {% if trade.status == 'pending' %}#ffaa44{% elif trade.status == 'accepted' %}#44ff44{% else %}#ff4444{% endif %}; font-size: 12px;">
+                        {{ trade.get_status_display|upper }}
+                    </span>
+                </div>
+                
+                <div style="font-family: monospace; font-size: 12px; margin: 10px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <strong style="color: #ff4444;">OFFERING:</strong><br>
+                            ⚡{{ trade.offer_energy:,}} ⛏{{ trade.offer_minerals:,}} 🌾{{ trade.offer_food:,}}
+                        </div>
+                        <div>
+                            <strong style="color: #44ff44;">REQUESTING:</strong><br>
+                            ⚡{{ trade.request_energy:,}} ⛏{{ trade.request_minerals:,}} 🌾{{ trade.request_food:,}}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if trade.message %}
+                <div style="font-style: italic; color: #aaa; font-size: 12px; margin-top: 10px;">
+                    "{{ trade.message }}"
+                </div>
+                {% endif %}
+                
+                <div style="font-size: 11px; color: #666; margin-top: 10px;">
+                    Created: {{ trade.created_at|date:"M d, H:i" }} • 
+                    Expires: {{ trade.expires_at|date:"M d, H:i" }}
+                </div>
+                
+                {% if trade.status == 'pending' %}
+                <div style="margin-top: 10px;">
+                    <button class="form-button cancel-trade" data-trade-id="{{ trade.id }}" 
+                            style="background: #ff4444; font-size: 12px; padding: 5px 10px;">
+                        [ CANCEL ]
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; opacity: 0.6;">
+            No outgoing trade offers
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Received Offers -->
+    <div class="dashboard-panel">
+        <h3>[ RECEIVED OFFERS ]</h3>
+        
+        {% if received_trades %}
+        <div style="max-height: 400px; overflow-y: auto;">
+            {% for trade in received_trades %}
+            <div style="border: 1px solid #666; padding: 15px; margin: 10px 0; background: rgba(255, 255, 255, 0.02);">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
+                    <strong style="color: #44ff44;">← {{ trade.sender.name }}</strong>
+                    <span style="color: {% if trade.status == 'pending' %}#ffaa44{% elif trade.status == 'accepted' %}#44ff44{% else %}#ff4444{% endif %}; font-size: 12px;">
+                        {{ trade.get_status_display|upper }}
+                    </span>
+                </div>
+                
+                <div style="font-family: monospace; font-size: 12px; margin: 10px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <strong style="color: #44ff44;">THEY OFFER:</strong><br>
+                            ⚡{{ trade.offer_energy:,}} ⛏{{ trade.offer_minerals:,}} 🌾{{ trade.offer_food:,}}
+                        </div>
+                        <div>
+                            <strong style="color: #ff4444;">THEY WANT:</strong><br>
+                            ⚡{{ trade.request_energy:,}} ⛏{{ trade.request_minerals:,}} 🌾{{ trade.request_food:,}}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if trade.message %}
+                <div style="font-style: italic; color: #aaa; font-size: 12px; margin-top: 10px;">
+                    "{{ trade.message }}"
+                </div>
+                {% endif %}
+                
+                <div style="font-size: 11px; color: #666; margin-top: 10px;">
+                    Created: {{ trade.created_at|date:"M d, H:i" }} • 
+                    Expires: {{ trade.expires_at|date:"M d, H:i" }}
+                </div>
+                
+                {% if trade.status == 'pending' %}
+                <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <button class="form-button accept-trade" data-trade-id="{{ trade.id }}" 
+                            style="background: #44ff44; font-size: 12px; padding: 5px 10px;">
+                        [ ACCEPT ]
+                    </button>
+                    <button class="form-button reject-trade" data-trade-id="{{ trade.id }}" 
+                            style="background: #ff4444; font-size: 12px; padding: 5px 10px;">
+                        [ REJECT ]
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; opacity: 0.6;">
+            No incoming trade offers
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Trading Market Overview -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ GALACTIC MARKET ]</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        {% for partner in all_empires %}
+        <div style="border: 1px solid #666; padding: 15px; background: rgba(255, 255, 255, 0.02);">
+            <h4 style="color: #ffaa44; margin-bottom: 10px;">{{ partner.name }}</h4>
+            
+            <div style="font-family: monospace; font-size: 12px;">
+                Power Level: {{ partner.power_level:,}}<br>
+                                            Territory: ({{ partner.territories.first.x }}, {{ partner.territories.first.y }})<br>
+                
+                {% for relation in diplomatic_relations %}
+                    {% if relation.empire_a == partner or relation.empire_b == partner %}
+                    <div style="color: {% if relation.relation_type == 'allied' %}#44ff44{% elif relation.relation_type == 'hostile' %}#ff4444{% else %}#ffaa44{% endif %}; margin-top: 5px;">
+                        Status: {{ relation.get_relation_type_display }}
+                        {% if relation.get_trade_cost_modifier != 1.0 %}
+                        <br>Trade Modifier: {{ relation.get_trade_cost_modifier|floatformat:1 }}x
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div style="margin-top: 10px;">
+                <button class="form-button quick-trade" data-partner-id="{{ partner.id }}" 
+                        style="font-size: 12px; padding: 5px 10px;">
+                    [ QUICK TRADE ]
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Trading Guide -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ TRADING PROTOCOLS ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; font-family: monospace; font-size: 12px;">
+        <div>
+            <strong>📋 TRADING RULES:</strong><br>
+            • All trades expire in 24 hours<br>
+            • Resources must be available when trade executes<br>
+            • Diplomatic relations affect trade costs<br>
+            • Alliance members get trade bonuses
+        </div>
+        <div>
+            <strong>💰 COST MODIFIERS:</strong><br>
+            • Allied: 20% discount<br>
+            • Friendly: 10% discount<br>
+            • Neutral: Normal cost<br>
+            • Hostile: 20% markup<br>
+            • At War: 100% markup
+        </div>
+        <div>
+            <strong>⚖ TRADING STRATEGY:</strong><br>
+            • Build diplomatic relations first<br>
+            • Trade excess production for needed resources<br>
+            • Consider long-term partnerships<br>
+            • Monitor market prices and demand
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Trade offer form
+    const tradeForm = document.getElementById('trade-offer-form');
+    if (tradeForm) {
+        tradeForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                receiver_id: formData.get('receiver_id'),
+                offer_energy: parseInt(formData.get('offer_energy') || 0),
+                offer_minerals: parseInt(formData.get('offer_minerals') || 0),
+                offer_food: parseInt(formData.get('offer_food') || 0),
+                request_energy: parseInt(formData.get('request_energy') || 0),
+                request_minerals: parseInt(formData.get('request_minerals') || 0),
+                request_food: parseInt(formData.get('request_food') || 0),
+                message: formData.get('message')
+            };
+            
+            // Validation
+            const totalOffered = data.offer_energy + data.offer_minerals + data.offer_food;
+            const totalRequested = data.request_energy + data.request_minerals + data.request_food;
+            
+            if (totalOffered === 0) {
+                NovaGame.showNotification('Must offer at least one resource', 'error');
+                return;
+            }
+            
+            if (totalRequested === 0) {
+                NovaGame.showNotification('Must request at least one resource', 'error');
+                return;
+            }
+            
+            const response = await fetch('/game/api/create-trade-offer/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                NovaGame.showNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                NovaGame.showNotification(result.error, 'error');
+            }
+        });
+    }
+    
+    // Accept trade buttons
+    document.querySelectorAll('.accept-trade').forEach(button => {
+        button.addEventListener('click', async function() {
+            const tradeId = this.dataset.tradeId;
+            await respondToTrade(tradeId, 'accept');
+        });
+    });
+    
+    // Reject trade buttons
+    document.querySelectorAll('.reject-trade').forEach(button => {
+        button.addEventListener('click', async function() {
+            const tradeId = this.dataset.tradeId;
+            await respondToTrade(tradeId, 'reject');
+        });
+    });
+    
+    // Quick trade buttons
+    document.querySelectorAll('.quick-trade').forEach(button => {
+        button.addEventListener('click', function() {
+            const partnerId = this.dataset.partnerId;
+            const select = document.querySelector('select[name="receiver_id"]');
+            if (select) {
+                select.value = partnerId;
+                select.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    });
+});
+
+async function respondToTrade(tradeId, action) {
+    const data = {
+        trade_id: tradeId,
+        action: action
+    };
+    
+    const response = await fetch('/game/api/respond-trade-offer/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+        NovaGame.showNotification(result.message, 'success');
+        setTimeout(() => window.location.reload(), 1000);
+    } else {
+        NovaGame.showNotification(result.error, 'error');
+    }
+}
+</script>
+{% endblock %} 

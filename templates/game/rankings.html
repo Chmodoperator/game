@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Rankings - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                              GALACTIC POWER RANKINGS                                │
+    │                           NOVA TERRA DOMINANCE SCALE                               │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Current Empire Rank -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ YOUR EMPIRE STATUS ]</h3>
+    <div style="font-family: monospace; text-align: center;">
+Empire: {{ empire.name }}
+Current Rank: #{{ empire.rank|default:"Unranked" }}
+Power Level: {{ empire.power_level }}
+Population: {{ empire.population|floatformat:0 }}
+
+{% if empire.rank <= 10 %}
+┌─ ELITE STATUS ─────────────────────────────────────────────────────────────────────────┐
+│ Congratulations! You are among the top 10 most powerful empires in the galaxy.       │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+{% elif empire.rank <= 25 %}
+┌─ RISING POWER ─────────────────────────────────────────────────────────────────────────┐
+│ Your empire is gaining significant influence in galactic politics.                    │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+{% else %}
+┌─ DEVELOPING EMPIRE ────────────────────────────────────────────────────────────────────┐
+│ Continue expanding and researching to climb the galactic rankings.                    │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+{% endif %}
+    </div>
+</div>
+
+<!-- Top Rankings Table -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ GALACTIC POWER HIERARCHY ]</h3>
+    
+    <table class="rankings-table data-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Empire</th>
+                <th>Leader</th>
+                <th>Power Level</th>
+                <th>Territory</th>
+                <th>Population</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ranked_empire in top_empires %}
+            <tr class="{% if ranked_empire.rank == 1 %}rank-1{% elif ranked_empire.rank == 2 %}rank-2{% elif ranked_empire.rank == 3 %}rank-3{% endif %} {% if ranked_empire == empire %}highlight{% endif %}">
+                <td>
+                    {% if ranked_empire.rank == 1 %}👑 #1{% elif ranked_empire.rank == 2 %}🥈 #2{% elif ranked_empire.rank == 3 %}🥉 #3{% else %}#{{ ranked_empire.rank }}{% endif %}
+                </td>
+                <td style="color: {{ ranked_empire.color }};">
+                    {{ ranked_empire.name }}
+                    {% if ranked_empire == empire %}(YOU){% endif %}
+                </td>
+                <td>{{ ranked_empire.user.username }}</td>
+                <td>{{ ranked_empire.power_level|floatformat:0 }}</td>
+                <td>({{ ranked_empire.territories.first.x }}, {{ ranked_empire.territories.first.y }})</td>
+                <td>{{ ranked_empire.population|floatformat:0 }}</td>
+                <td>
+                    {% if ranked_empire.power_level > 10000 %}
+                        🌌 Galactic Superpower
+                    {% elif ranked_empire.power_level > 5000 %}
+                        ⭐ Major Power
+                    {% elif ranked_empire.power_level > 2000 %}
+                        🚀 Rising Empire
+                    {% elif ranked_empire.power_level > 500 %}
+                        🏛 Established Civilization
+                    {% else %}
+                        🌱 Developing Nation
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No empires ranked yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Ranking Categories -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+    <!-- Military Rankings -->
+    <div class="dashboard-panel">
+        <h3>[ MILITARY STRENGTH ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>🥇 Most Powerful Army:</strong><br>
+                Empire Name (Power: 9999)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>⚔ Most Battles Won:</strong><br>
+                Empire Name (Victories: 156)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🏰 Best Defended:</strong><br>
+                Empire Name (Defense: 8888)
+            </div>
+        </div>
+    </div>
+    
+    <!-- Economic Rankings -->
+    <div class="dashboard-panel">
+        <h3>[ ECONOMIC POWER ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>💰 Richest Empire:</strong><br>
+                Empire Name (Resources: 999K)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🏭 Most Productive:</strong><br>
+                Empire Name (Output: 5000/h)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>📈 Fastest Growing:</strong><br>
+                Empire Name (+500 this week)
+            </div>
+        </div>
+    </div>
+    
+    <!-- Technology Rankings -->
+    <div class="dashboard-panel">
+        <h3>[ TECHNOLOGICAL ADVANCEMENT ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>🔬 Most Advanced:</strong><br>
+                Empire Name (Tech Level: 85)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🚀 Space Pioneers:</strong><br>
+                Empire Name (Systems: 12)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🧠 Research Leaders:</strong><br>
+                Empire Name (Projects: 45)
+            </div>
+        </div>
+    </div>
+    
+    <!-- Territorial Rankings -->
+    <div class="dashboard-panel">
+        <h3>[ TERRITORIAL CONTROL ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>🌍 Largest Empire:</strong><br>
+                Empire Name (Territory: 15, 32)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>👥 Most Populated:</strong><br>
+                Empire Name (Citizens: 2.5M)
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🏙 Most Developed:</strong><br>
+                Empire Name (Buildings: 567)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Showcase -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ GALACTIC ACHIEVEMENTS ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; font-family: monospace; font-size: 12px;">
+        <div style="text-align: center; padding: 10px; border: 1px solid currentColor;">
+            <div style="font-size: 24px;">👑</div>
+            <strong>GALACTIC EMPEROR</strong><br>
+            Held #1 rank for 30 days<br>
+            <span style="color: #ffaa00;">Current: Empire Alpha</span>
+        </div>
+        <div style="text-align: center; padding: 10px; border: 1px solid currentColor;">
+            <div style="font-size: 24px;">⚔</div>
+            <strong>CONQUEROR</strong><br>
+                            Dominated their territory<br>
+            <span style="color: #ffaa00;">Current: War Machine</span>
+        </div>
+        <div style="text-align: center; padding: 10px; border: 1px solid currentColor;">
+            <div style="font-size: 24px;">🔬</div>
+            <strong>TECH PIONEER</strong><br>
+            First to complete all research<br>
+            <span style="color: #ffaa00;">Current: Science Corp</span>
+        </div>
+        <div style="text-align: center; padding: 10px; border: 1px solid currentColor;">
+            <div style="font-size: 24px;">🤝</div>
+            <strong>DIPLOMAT</strong><br>
+            Leader of largest alliance<br>
+            <span style="color: #ffaa00;">Current: Peace Union</span>
+        </div>
+    </div>
+</div>
+
+<!-- Historical Rankings -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ HISTORICAL RECORDS ]</h3>
+    <div style="font-family: monospace; font-size: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <strong>📅 WEEKLY CHANGES:</strong><br>
+                🔺 Biggest Gainer: +25 ranks<br>
+                🔻 Biggest Faller: -18 ranks<br>
+                📈 Most Improved: +2000 power
+            </div>
+            <div>
+                <strong>🏆 ALL-TIME RECORDS:</strong><br>
+                💪 Highest Power: 50,000<br>
+                🌍 Strongest Territory: Level 100<br>
+                ⚔ Longest War: 45 days
+            </div>
+            <div>
+                <strong>📊 CURRENT SEASON:</strong><br>
+                🏅 Season Leader: Empire Alpha<br>
+                🎯 Championship Points: 1,250<br>
+                ⏰ Season Ends: 15 days
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Power Calculation Info -->
+<div class="dashboard-panel" style="margin-top: 20px;">
+    <h3>[ POWER CALCULATION FORMULA ]</h3>
+    <div style="font-family: monospace; font-size: 12px; opacity: 0.8;">
+┌─ RANKING METHODOLOGY ──────────────────────────────────────────────────────────────────┐
+│ Power Level = Territory Development + Building Levels × 5 + Research Levels × 20 + Army │
+│ Rankings update every hour based on total empire power                                │
+│ Ties are broken by territory count, then by empire age                               │
+│                                                                                        │
+│ Factors Contributing to Power:                                                         │
+│ • Territory Control (10 points each)                                                  │
+│ • Infrastructure Development (5 points per building level)                           │
+│ • Technology Research (20 points per research level)                                 │
+│ • Military Strength (1 point per army unit)                                          │
+│ • Alliance Membership (bonus multiplier)                                             │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Highlight current empire row
+    const currentEmpireRow = document.querySelector('.rankings-table .highlight');
+    if (currentEmpireRow) {
+        currentEmpireRow.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    }
+    
+    // Auto-refresh rankings every 5 minutes
+    setInterval(function() {
+        if (gameSocket && gameSocket.socket.readyState === WebSocket.OPEN) {
+            gameSocket.showMessage('Updating galactic rankings...', 'info');
+        }
+        // In a real implementation, this would refresh the page or update via AJAX
+    }, 300000); // 5 minutes
+    
+    // Add click handlers for empire names to view details
+    document.querySelectorAll('.rankings-table tbody tr').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', function() {
+            const empireName = this.querySelector('td:nth-child(2)').textContent.trim();
+            if (empireName && !empireName.includes('(YOU)')) {
+                NovaGame.showNotification(`Viewing details for ${empireName.replace(' (YOU)', '')}...`, 'info');
+                // Would open empire details modal
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.rankings-table .highlight {
+    font-weight: bold;
+}
+
+.rankings-table .rank-1 {
+    color: #ffaa00;
+    font-weight: bold;
+}
+
+.rankings-table .rank-2 {
+    color: #aaaaaa;
+    font-weight: bold;
+}
+
+.rankings-table .rank-3 {
+    color: #cc7722;
+    font-weight: bold;
+}
+
+.rankings-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+</style>
+{% endblock %} 

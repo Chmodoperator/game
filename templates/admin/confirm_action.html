@@ -1,0 +1,63 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .confirmation-box {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 20px;
+        margin: 20px 0;
+        border-left: 4px solid #f39c12;
+    }
+    .affected-items {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 15px 0;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .item {
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="confirmation-box">
+    <h3>⚠️ Confirmation Required</h3>
+    <p>{{ message }}</p>
+</div>
+
+<div class="affected-items">
+    <h3>Affected Items ({{ queryset|length }})</h3>
+    {% for item in queryset %}
+        <div class="item">
+            <strong>{{ item.name }}</strong>
+            {% if item.user %}
+                ({{ item.user.username }})
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="submit-row">
+        <input type="submit" name="apply" value="Yes, I'm sure" class="default" style="background: #dc3545;" />
+        <a href="{% url 'admin:game_empire_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+</form>
+{% endblock %} 

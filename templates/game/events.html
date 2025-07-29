@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Events - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                              GALACTIC NEWS NETWORK                                  │
+    │                           NOVA TERRA EVENT MONITORING                               │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Active Events -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ ACTIVE GALACTIC EVENTS ]</h3>
+    
+    {% if active_events %}
+        {% for event in active_events %}
+        <div class="event-item active" style="margin: 15px 0; padding: 15px; border: 2px solid #ff4444; background-color: rgba(255, 68, 68, 0.1);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <h4 style="color: #ff4444;">🔥 {{ event.title }}</h4>
+                <span style="opacity: 0.7;">{{ event.get_event_type_display|upper }}</span>
+            </div>
+            
+            <div style="font-family: monospace; font-size: 14px; margin-bottom: 10px;">
+{{ event.description }}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8;">
+                <span>Started: {{ event.started_at|date:"M d, Y H:i" }}</span>
+                <span>Ends: {{ event.ends_at|date:"M d, Y H:i" }}</span>
+            </div>
+            
+            {% if event.effects %}
+            <div style="margin-top: 10px; padding: 10px; border: 1px solid currentColor; background-color: rgba(255, 255, 255, 0.02);">
+                <strong>Event Effects:</strong><br>
+                <div style="font-family: monospace; font-size: 12px;">
+                    {% for effect, value in event.effects.items %}
+                    • {{ effect|title }}: {% if value > 0 %}+{% endif %}{{ value }}{% if value|add:"0" != value %}%{% endif %}<br>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if event.affected_territories.all %}
+            <div style="margin-top: 10px; font-size: 12px;">
+                <strong>Affected Regions:</strong> {{ event.affected_territories.count }} territories
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="event-item" style="text-align: center; opacity: 0.7;">
+        <h4>🌌 Peaceful Times</h4>
+        <p>No major galactic events are currently active. Enjoy the tranquility while it lasts...</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Recent Event History -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ GALACTIC EVENT ARCHIVE ]</h3>
+    
+    <div class="event-list">
+        {% for event in past_events %}
+        <div class="event-item expired" style="margin: 10px 0; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.3); opacity: 0.6;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <h4>
+                    {% if event.event_type == "natural_disaster" %}🌪
+                    {% elif event.event_type == "alien_invasion" %}👽
+                    {% elif event.event_type == "economic_crisis" %}💸
+                    {% elif event.event_type == "technological_breakthrough" %}🚀
+                    {% elif event.event_type == "resource_discovery" %}💎
+                    {% elif event.event_type == "rebellion" %}⚔
+                    {% else %}📰
+                    {% endif %}
+                    {{ event.title }}
+                </h4>
+                <span style="font-size: 12px; opacity: 0.7;">{{ event.get_event_type_display|upper }}</span>
+            </div>
+            
+            <div style="font-size: 12px; margin-bottom: 5px;">
+                {{ event.description|truncatechars:150 }}
+            </div>
+            
+            <div style="font-size: 11px; opacity: 0.6;">
+                Duration: {{ event.started_at|date:"M d" }} - {{ event.ends_at|date:"M d, Y" }}
+            </div>
+        </div>
+        {% empty %}
+        <div class="event-item">
+            <p>No recent events recorded.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Event Categories -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+    <!-- Natural Disasters -->
+    <div class="dashboard-panel">
+        <h3>[ NATURAL PHENOMENA ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>🌪 Solar Storms:</strong><br>
+                Disrupt energy production galaxy-wide
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>☄ Asteroid Showers:</strong><br>
+                Damage infrastructure, yield minerals
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🌊 Cosmic Waves:</strong><br>
+                Enhance communication and research
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🕳 Wormhole Openings:</strong><br>
+                Enable rapid travel between regions
+            </div>
+        </div>
+    </div>
+    
+    <!-- Military Events -->
+    <div class="dashboard-panel">
+        <h3>[ MILITARY INCIDENTS ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>👽 Alien Invasions:</strong><br>
+                Mysterious forces attack all empires
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>⚔ Galactic Wars:</strong><br>
+                Large-scale conflicts between alliances
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🛡 Peace Treaties:</strong><br>
+                Diplomatic resolutions end hostilities
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🏴‍☠ Pirate Raids:</strong><br>
+                Roving bandits attack supply lines
+            </div>
+        </div>
+    </div>
+    
+    <!-- Economic Events -->
+    <div class="dashboard-panel">
+        <h3>[ ECONOMIC SHIFTS ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>💰 Market Booms:</strong><br>
+                Increased resource values and efficiency
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>📉 Economic Crashes:</strong><br>
+                Reduced production and income
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🏭 Industrial Revolution:</strong><br>
+                Manufacturing efficiency increases
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🌾 Crop Failures:</strong><br>
+                Food shortages affect population
+            </div>
+        </div>
+    </div>
+    
+    <!-- Discovery Events -->
+    <div class="dashboard-panel">
+        <h3>[ SCIENTIFIC DISCOVERIES ]</h3>
+        <div style="font-family: monospace; font-size: 12px;">
+            <div style="margin-bottom: 10px;">
+                <strong>🔬 Tech Breakthroughs:</strong><br>
+                Accelerated research in all fields
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>💎 Resource Deposits:</strong><br>
+                New mineral veins discovered
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🌌 Habitable Worlds:</strong><br>
+                New territories become available
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong>🧬 Genetic Advances:</strong><br>
+                Population growth rates increase
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Event Impact Analysis -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ EMPIRE IMPACT ASSESSMENT ]</h3>
+    
+    <div style="font-family: monospace; font-size: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <strong>📊 CURRENT MODIFIERS:</strong><br>
+                Energy Production: +0%<br>
+                Mineral Extraction: +0%<br>
+                Food Generation: +0%<br>
+                Research Speed: +0%
+            </div>
+            <div>
+                <strong>⚔ MILITARY STATUS:</strong><br>
+                Combat Effectiveness: Normal<br>
+                Defense Bonus: +0%<br>
+                Army Morale: Standard<br>
+                Battle Frequency: Typical
+            </div>
+            <div>
+                <strong>🏛 EMPIRE STABILITY:</strong><br>
+                Population Growth: Normal<br>
+                Infrastructure Risk: Low<br>
+                Alliance Relations: Stable
+            </div>
+        </div>
+    </div>
+    
+    {% if active_events %}
+    <div style="margin-top: 15px; padding: 10px; border: 1px solid #ffaa44; background-color: rgba(255, 170, 68, 0.1);">
+        <strong>⚠ EVENT ADVISORY:</strong><br>
+        <span style="font-size: 12px;">
+            Your empire is currently affected by {{ active_events|length }} active galactic event{% if active_events|length != 1 %}s{% endif %}. 
+            Monitor the situation and adjust your strategy accordingly.
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Galactic News Feed -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ GALACTIC NEWS FEED ]</h3>
+    
+    <div style="font-family: monospace; font-size: 12px; line-height: 1.6;">
+        <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 0;">
+            <span style="color: #ffaa44;">[{{ "now"|date:"H:i" }}]</span> 
+            📡 NOVA TERRA CENTRAL: Monitoring {{ active_events|length }} active galactic events.
+        </div>
+        <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 0;">
+            <span style="color: #ffaa44;">[{{ "now"|date:"H:i"|add:"-15" }}]</span> 
+            🌌 ASTRO SURVEY: Deep space sensors detecting unusual energy signatures in outer rim.
+        </div>
+        <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 0;">
+            <span style="color: #ffaa44;">[{{ "now"|date:"H:i"|add:"-32" }}]</span> 
+            🏛 DIPLOMATIC CORPS: Alliance formations increasing as empires seek mutual protection.
+        </div>
+        <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 0;">
+            <span style="color: #ffaa44;">[{{ "now"|date:"H:i"|add:"-47" }}]</span> 
+            ⚔ MILITARY INTEL: Border skirmishes reported in contested territories.
+        </div>
+        <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 0;">
+            <span style="color: #ffaa44;">[{{ "now"|date:"H:i"|add:"-61" }}]</span> 
+            🔬 RESEARCH NETWORK: Breakthrough in quantum technology reported by leading empires.
+        </div>
+    </div>
+</div>
+
+<!-- Event Strategy Guide -->
+<div class="dashboard-panel" style="margin-top: 20px;">
+    <h3>[ EVENT RESPONSE STRATEGIES ]</h3>
+    <div style="font-family: monospace; font-size: 12px; opacity: 0.8;">
+┌─ COMMANDER'S GUIDE TO GALACTIC EVENTS ────────────────────────────────────────────────┐
+│                                                                                        │
+│ 🌪 NATURAL DISASTERS: Stockpile resources, reinforce critical infrastructure         │
+│ 👽 ALIEN INVASIONS: Form temporary alliances, coordinate military response           │
+│ 💸 ECONOMIC CRISES: Diversify resource production, maintain strategic reserves       │
+│ 🚀 TECH BREAKTHROUGHS: Accelerate research projects, upgrade key technologies        │
+│ 💎 RESOURCE DISCOVERIES: Expand quickly to claim new deposits before competitors     │
+│ ⚔ REBELLIONS: Monitor population happiness, increase security measures              │
+│                                                                                        │
+│ Remember: Events affect all empires equally, but preparation and adaptation          │
+│ determine who survives and who thrives in the chaos of galactic politics.           │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh events every 2 minutes
+    setInterval(function() {
+        if (gameSocket && gameSocket.socket.readyState === WebSocket.OPEN) {
+            gameSocket.showMessage('Checking for new galactic events...', 'info');
+        }
+        // In a real implementation, this would refresh the page or update via AJAX
+    }, 120000); // 2 minutes
+    
+    // Add blinking effect to active events
+    const activeEvents = document.querySelectorAll('.event-item.active');
+    activeEvents.forEach(event => {
+        setInterval(() => {
+            event.style.borderColor = event.style.borderColor === 'rgb(255, 68, 68)' ? '#ffaa44' : '#ff4444';
+        }, 2000);
+    });
+    
+    // Countdown timers for active events
+    const updateCountdowns = () => {
+        activeEvents.forEach(event => {
+            const endTime = new Date(event.querySelector('span:last-child').textContent.replace('Ends: ', ''));
+            const now = new Date();
+            const timeLeft = endTime - now;
+            
+            if (timeLeft > 0) {
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                
+                // Add countdown if not exists
+                let countdown = event.querySelector('.countdown');
+                if (!countdown) {
+                    countdown = document.createElement('div');
+                    countdown.className = 'countdown';
+                    countdown.style.cssText = 'font-weight: bold; color: #ff4444; margin-top: 5px;';
+                    event.appendChild(countdown);
+                }
+                countdown.textContent = `⏰ Time Remaining: ${hours}h ${minutes}m`;
+            }
+        });
+    };
+    
+    updateCountdowns();
+    setInterval(updateCountdowns, 60000); // Update every minute
+});
+</script>
+{% endblock %} 

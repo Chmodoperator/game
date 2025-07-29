@@ -1,0 +1,811 @@
+{% extends "base.html" %}
+
+{% block title %}Diplomacy & Alliances - {{ empire.name }}{% endblock %}
+
+{% block content %}
+<!-- Hidden CSRF Token for AJAX requests -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<div style="text-align: center; margin-bottom: 20px;">
+    ┌─────────────────────────────────────────────────────────────────────────────────────┐
+    │                           🤝 DIPLOMATIC RELATIONS & ALLIANCES 🤝                   │
+    │                           {{ empire.name|upper }} FOREIGN MINISTRY                  │
+    └─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- Alliance Status & Benefits -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ 🤝 YOUR ALLIANCE STATUS ]</h3>
+    
+    {% if empire_alliances %}
+        {% for alliance in empire_alliances %}
+        <div style="background: rgba(68, 255, 68, 0.1); border: 1px solid #44ff44; border-radius: 6px; padding: 20px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="color: #44ff44; margin: 0;">🏛️ {{ alliance.name }}</h4>
+                <div style="text-align: right;">
+                    {% if alliance.leader == empire %}
+                        <span style="color: #ffaa44; font-weight: bold;">👑 ALLIANCE LEADER</span>
+                    {% else %}
+                        <span style="color: #44ff44;">⚔️ ALLIANCE MEMBER</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Alliance Benefits Info -->
+            <div style="background: rgba(255, 170, 68, 0.15); border: 1px solid #ffaa44; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+                <h5 style="color: #ffaa44; margin-bottom: 10px;">⚡ ALLIANCE COMBAT BONUSES ⚡</h5>
+                <div style="font-family: monospace; font-size: 12px; color: #fff;">
+                    <div style="color: #ff4444;">🗡️ +10% Attack Power in all battles</div>
+                    <div style="color: #44ff44;">🛡️ +5% Defense when defending allied territories</div>
+                    <div style="color: #00aaff;">📡 Shared intelligence on enemy movements</div>
+                    <div style="color: #ffaa44;">🤝 Coordinated military campaigns</div>
+                    <div style="color: #aa44ff;">💰 Resource sharing capabilities</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <div style="font-family: monospace; font-size: 12px;">
+                        <div><strong>Leader:</strong> {{ alliance.leader.name }}</div>
+                        <div><strong>Members:</strong> {{ alliance.members.count }}/10</div>
+                        <div><strong>Founded:</strong> {{ alliance.created_at|date:"M d, Y" }}</div>
+                        <div><strong>Status:</strong> {% if alliance.is_open %}🟢 Open Recruitment{% else %}🔒 Invite Only{% endif %}</div>
+                    </div>
+                    
+                    {% if alliance.description %}
+                    <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                        <strong>Alliance Description:</strong><br>
+                        <span style="font-style: italic;">{{ alliance.description }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <h5 style="color: #44ff44; margin-bottom: 10px;">👥 ALLIANCE MEMBERS</h5>
+                    <div style="max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 11px;">
+                        {% for member in alliance.members.all %}
+                        <div style="padding: 3px 0; border-bottom: 1px solid #333;">
+                            {% if member == alliance.leader %}👑{% else %}⚔️{% endif %} 
+                            {{ member.name }} 
+                            <span style="color: #aaa;">(Power: {{ member.power_level }})</span>
+                            {% if alliance.leader == empire and member != empire %}
+                                <button onclick="removeMember({{ member.id }})" 
+                                        style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 10px; margin-left: 5px;" 
+                                        title="Remove from alliance">❌</button>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                {% if alliance.leader == empire %}
+                    <button onclick="showInviteModal()" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44;">
+                        [ 📨 INVITE PLAYERS ]
+                    </button>
+                    <button onclick="toggleAllianceOpen({{ alliance.id }})" class="form-button" style="background: linear-gradient(145deg, #4a4a2a, #3a3a1a); border-color: #ffaa44;">
+                        [ {% if alliance.is_open %}🔒 CLOSE{% else %}🔓 OPEN{% endif %} RECRUITMENT ]
+                    </button>
+                {% endif %}
+                <button onclick="leaveAlliance({{ alliance.id }})" class="form-button" style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border-color: #ff4444;">
+                    [ 🚪 LEAVE ALLIANCE ]
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; padding: 40px; background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; border-radius: 6px;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🏴</div>
+            <h4 style="color: #ff4444; margin-bottom: 10px;">INDEPENDENT EMPIRE</h4>
+            <p style="color: #aaa; margin-bottom: 20px;">
+                You are not currently a member of any alliance. Join or create an alliance to gain combat bonuses and strategic advantages!
+            </p>
+            <div style="background: rgba(255, 170, 68, 0.15); border: 1px solid #ffaa44; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+                <h5 style="color: #ffaa44; margin-bottom: 10px;">💪 ALLIANCE BENEFITS</h5>
+                <div style="font-family: monospace; font-size: 12px; text-align: left;">
+                    <div style="color: #ff4444;">🗡️ +10% Attack Power in all battles</div>
+                    <div style="color: #44ff44;">🛡️ +5% Defense when defending allied territories</div>
+                    <div style="color: #00aaff;">📡 Shared intelligence and coordination</div>
+                    <div style="color: #ffaa44;">🤝 Military campaign coordination</div>
+                    <div style="color: #aa44ff;">💰 Resource sharing opportunities</div>
+                </div>
+            </div>
+            <button onclick="showCreateAllianceModal()" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44; font-size: 16px; padding: 12px 24px;">
+                [ 🏛️ CREATE NEW ALLIANCE ]
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Pending Invitations -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ 📨 PENDING ALLIANCE INVITATIONS ]</h3>
+    
+    <div id="invitation-list">
+        <!-- Invitations will be loaded here via AJAX -->
+        <div style="text-align: center; padding: 20px; color: #aaa;">
+            <div class="loading">Loading invitations...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Available Alliances -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ 🌟 GALACTIC ALLIANCES ]</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px;">
+        {% for alliance in alliances %}
+        <div style="border: 1px solid #333; padding: 15px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; transition: all 0.2s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="color: #44ff44; margin: 0;">🏛️ {{ alliance.name }}</h4>
+                <div style="text-align: right; font-size: 11px;">
+                    <div style="color: #ffaa44;">Members: {{ alliance.members.count }}/10</div>
+                    <div style="color: {% if alliance.is_open %}#44ff44{% else %}#ff4444{% endif %};">
+                        {% if alliance.is_open %}🟢 Open{% else %}🔒 Closed{% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="font-family: monospace; font-size: 12px; margin-bottom: 10px;">
+                <div><strong>Leader:</strong> {{ alliance.leader.name }}</div>
+                <div><strong>Founded:</strong> {{ alliance.created_at|date:"M d, Y" }}</div>
+                <div><strong>Total Power:</strong> {{ alliance.total_power|default:"Calculating..." }}</div>
+            </div>
+            
+            {% if alliance.description %}
+            <div style="margin: 10px 0; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; font-size: 11px;">
+                {{ alliance.description|truncatechars:120 }}
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 10px;">
+                {% if empire not in alliance.members.all %}
+                    {% if alliance.is_open and alliance.members.count < 10 %}
+                        <button onclick="requestToJoin({{ alliance.id }})" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44;">
+                            [ 🤝 REQUEST TO JOIN ]
+                        </button>
+                    {% elif alliance.members.count >= 10 %}
+                        <span style="color: #ff4444; font-size: 11px;">[ 🚫 ALLIANCE FULL ]</span>
+                    {% else %}
+                        <span style="color: #ffaa44; font-size: 11px;">[ 🔒 INVITATION ONLY ]</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color: #44ff44; font-weight: bold;">[ ✓ YOUR ALLIANCE ]</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #aaa;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🌌</div>
+            <h4>No alliances exist yet</h4>
+            <p>Be the first to create an alliance and unite the galaxy!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Diplomatic Communications -->
+<div class="dashboard-panel" style="margin-bottom: 20px;">
+    <h3>[ 📡 DIPLOMATIC COMMUNICATIONS ]</h3>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Incoming Messages -->
+        <div>
+            <h4 style="color: #44ff44; margin-bottom: 15px;">📥 INCOMING MESSAGES</h4>
+            <div style="max-height: 300px; overflow-y: auto;">
+                {% for message in received_messages %}
+                <div class="message-item {% if not message.read_at %}unread{% endif %}" style="margin-bottom: 10px; padding: 10px; border: 1px solid #333; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong style="color: #ffaa44;">From: {{ message.sender.name }}</strong>
+                        <span style="opacity: 0.7; font-size: 11px;">{{ message.sent_at|date:"M d, H:i" }}</span>
+                    </div>
+                    <div style="margin-bottom: 5px; font-size: 12px;">
+                        <span style="color: #00aaff;">[{{ message.get_message_type_display|upper }}]</span>
+                        {{ message.subject }}
+                    </div>
+                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 8px;">
+                        {{ message.content|truncatechars:80 }}
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="readMessage({{ message.id }})" class="form-button" style="font-size: 10px; padding: 4px 8px;">READ</button>
+                        <button onclick="replyToMessage({{ message.id }})" class="form-button" style="font-size: 10px; padding: 4px 8px;">REPLY</button>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: 20px; color: #aaa;">
+                    📭 No incoming messages
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Send Message -->
+        <div>
+            <h4 style="color: #44ff44; margin-bottom: 15px;">📤 COMPOSE MESSAGE</h4>
+            <form id="message-form">
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #aaa;">Recipient Empire:</label>
+                    <select name="receiver_id" class="form-input" style="width: 100%;" required>
+                        <option value="">Select Empire...</option>
+                        {% for emp in available_empires %}
+                        <option value="{{ emp.id }}">{{ emp.name }} (Power: {{ emp.power_level }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #aaa;">Message Type:</label>
+                    <select name="message_type" class="form-input" style="width: 100%;">
+                        <option value="diplomatic">📜 General Message</option>
+                        <option value="alliance_invite">🤝 Alliance Invitation</option>
+                        <option value="declaration_of_war">⚔️ Declaration of War</option>
+                        <option value="peace_treaty">🕊️ Peace Treaty</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #aaa;">Subject:</label>
+                    <input type="text" name="subject" class="form-input" style="width: 100%;" placeholder="Message subject" required>
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #aaa;">Message:</label>
+                    <textarea name="content" class="form-input" style="width: 100%; height: 80px;" placeholder="Your diplomatic message..." required></textarea>
+                </div>
+                
+                <button type="submit" class="form-button" style="width: 100%;">[ 📨 SEND MESSAGE ]</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Diplomatic Intel -->
+<div class="dashboard-panel">
+    <h3>[ 📊 DIPLOMATIC INTELLIGENCE ]</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; font-family: monospace; font-size: 12px;">
+        <div style="padding: 15px; border: 1px solid #333; border-radius: 4px; background: rgba(68, 255, 68, 0.05);">
+            <strong style="color: #44ff44;">🤝 ALLIANCE STRATEGY:</strong><br><br>
+            • Max 10 players per alliance<br>
+            • +10% attack power in all battles<br>
+                                • +5% defense on allied territory<br>
+            • Shared intelligence networks<br>
+            • Coordinated military campaigns
+        </div>
+        <div style="padding: 15px; border: 1px solid #333; border-radius: 4px; background: rgba(255, 170, 68, 0.05);">
+            <strong style="color: #ffaa44;">📋 DIPLOMATIC ACTIONS:</strong><br><br>
+            • Send alliance invitations<br>
+            • Join open alliances<br>
+            • Declare wars & peace treaties<br>
+            • Leave alliances anytime<br>
+            • Remove members (leaders only)
+        </div>
+        <div style="padding: 15px; border: 1px solid #333; border-radius: 4px; background: rgba(0, 170, 255, 0.05);">
+            <strong style="color: #00aaff;">⚖️ DIPLOMATIC TIPS:</strong><br><br>
+            • Form alliances early for bonuses<br>
+            • Communication is key to success<br>
+            • Betrayal damages reputation<br>
+            • Strong alliances dominate galaxies<br>
+            • Choose allies wisely
+        </div>
+    </div>
+</div>
+
+<!-- Create Alliance Modal -->
+<div id="create-alliance-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 2px solid #44ff44; padding: 30px; max-width: 500px; width: 90%; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #44ff44; margin: 0;">🏛️ CREATE NEW ALLIANCE</h3>
+            <button onclick="closeCreateAllianceModal()" style="background: none; border: none; color: #ff4444; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <form id="create-alliance-form">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #aaa;">Alliance Name:</label>
+                <input type="text" name="alliance_name" class="form-input" style="width: 100%;" placeholder="Choose a unique alliance name" required maxlength="50">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #aaa;">Alliance Description:</label>
+                <textarea name="alliance_description" class="form-input" style="width: 100%; height: 100px;" placeholder="Describe your alliance's goals, strategy, and values..." maxlength="500"></textarea>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; color: #aaa;">
+                    <input type="checkbox" name="is_open" checked> 
+                    Open for public recruitment (players can request to join)
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button type="submit" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44;">
+                    [ 🏛️ ESTABLISH ALLIANCE ]
+                </button>
+                <button type="button" onclick="closeCreateAllianceModal()" class="form-button" style="background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-color: #aaa;">
+                    [ CANCEL ]
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Invite Players Modal -->
+<div id="invite-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 2px solid #44ff44; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #44ff44; margin: 0;">📨 INVITE PLAYERS TO ALLIANCE</h3>
+            <button onclick="closeInviteModal()" style="background: none; border: none; color: #ff4444; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div id="invite-players-list">
+            <!-- Player list will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let currentAlliance = {% if empire_alliances %}{{ empire_alliances.0.id }}{% else %}null{% endif %};
+
+// Load invitations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadInvitations();
+    setupFormHandlers();
+});
+
+async function loadInvitations() {
+    try {
+        const response = await fetch('/game/api/get-invitations/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayInvitations(data.invitations);
+        }
+    } catch (error) {
+        console.error('Failed to load invitations:', error);
+    }
+}
+
+function displayInvitations(invitations) {
+    const container = document.getElementById('invitation-list');
+    
+    if (invitations.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #aaa;">
+                📭 No pending invitations
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    invitations.forEach(invitation => {
+        html += `
+            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #ffaa44; border-radius: 6px; background: rgba(255, 170, 68, 0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="color: #ffaa44; margin: 0 0 5px 0;">🏛️ ${invitation.alliance_name}</h4>
+                        <div style="font-size: 12px; color: #aaa;">
+                            Invited by: ${invitation.sender_name}<br>
+                            Members: ${invitation.member_count}/10<br>
+                            Sent: ${new Date(invitation.sent_at).toLocaleDateString()}
+                        </div>
+                        ${invitation.message ? `<div style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; font-size: 11px;">"${invitation.message}"</div>` : ''}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button onclick="respondToInvitation(${invitation.id}, 'accept')" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44; font-size: 11px; padding: 6px 12px;">
+                            ✓ ACCEPT
+                        </button>
+                        <button onclick="respondToInvitation(${invitation.id}, 'decline')" class="form-button" style="background: linear-gradient(145deg, #4a2a2a, #3a1a1a); border-color: #ff4444; font-size: 11px; padding: 6px 12px;">
+                            ✗ DECLINE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function respondToInvitation(invitationId, action) {
+    try {
+        const response = await fetch('/game/api/respond-invitation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                invitation_id: invitationId,
+                action: action
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            loadInvitations();
+            if (action === 'accept') {
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to respond to invitation', 'error');
+    }
+}
+
+function showCreateAllianceModal() {
+    document.getElementById('create-alliance-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCreateAllianceModal() {
+    document.getElementById('create-alliance-modal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function showInviteModal() {
+    document.getElementById('invite-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    loadAvailablePlayers();
+}
+
+function closeInviteModal() {
+    document.getElementById('invite-modal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+async function loadAvailablePlayers() {
+    try {
+        const response = await fetch('/game/api/get-available-players/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayAvailablePlayers(data.players);
+        }
+    } catch (error) {
+        console.error('Failed to load available players:', error);
+    }
+}
+
+function displayAvailablePlayers(players) {
+    const container = document.getElementById('invite-players-list');
+    
+    if (players.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #aaa;">
+                No players available to invite
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div style="margin-bottom: 15px; color: #aaa; font-size: 12px;">Select players to invite to your alliance:</div>';
+    
+    players.forEach(player => {
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #333; border-radius: 4px; margin-bottom: 8px; background: rgba(255,255,255,0.02);">
+                <div>
+                    <div style="font-weight: bold; color: #44ff44;">${player.name}</div>
+                    <div style="font-size: 11px; color: #aaa;">
+                        Power: ${player.power_level} | Territory: (${player.territory_x}, ${player.territory_y})
+                        ${player.current_alliance ? `| Currently in: ${player.current_alliance}` : '| Independent'}
+                    </div>
+                </div>
+                <button onclick="invitePlayer(${player.id})" class="form-button" style="font-size: 11px; padding: 6px 12px;">
+                    📨 INVITE
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function invitePlayer(playerId) {
+    try {
+        const response = await fetch('/game/api/invite-player/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                player_id: playerId,
+                alliance_id: currentAlliance
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            loadAvailablePlayers(); // Refresh the list
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to send invitation', 'error');
+    }
+}
+
+async function requestToJoin(allianceId) {
+    try {
+        const response = await fetch('/game/api/request-join/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                alliance_id: allianceId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to request alliance membership', 'error');
+    }
+}
+
+async function leaveAlliance(allianceId) {
+    if (!confirm('Are you sure you want to leave this alliance? You will lose all alliance bonuses!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/game/api/leave-alliance/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                alliance_id: allianceId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to leave alliance', 'error');
+    }
+}
+
+async function removeMember(memberId) {
+    if (!confirm('Are you sure you want to remove this member from the alliance?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/game/api/remove-member/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                member_id: memberId,
+                alliance_id: currentAlliance
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to remove member', 'error');
+    }
+}
+
+async function toggleAllianceOpen(allianceId) {
+    try {
+        const response = await fetch('/game/api/toggle-alliance-open/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                alliance_id: allianceId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        NovaGame.showNotification('Failed to toggle alliance status', 'error');
+    }
+}
+
+function setupFormHandlers() {
+    // Create Alliance Form
+    const createAllianceForm = document.getElementById('create-alliance-form');
+    if (createAllianceForm) {
+        createAllianceForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                name: formData.get('alliance_name'),
+                description: formData.get('alliance_description'),
+                is_open: formData.get('is_open') === 'on'
+            };
+            
+            try {
+                const response = await fetch('/game/api/create-alliance/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    NovaGame.showNotification(result.message, 'success');
+                    closeCreateAllianceModal();
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    NovaGame.showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                NovaGame.showNotification('Failed to create alliance', 'error');
+            }
+        });
+    }
+    
+    // Message Form
+    const messageForm = document.getElementById('message-form');
+    if (messageForm) {
+        messageForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                receiver_id: formData.get('receiver_id'),
+                subject: formData.get('subject'),
+                content: formData.get('content'),
+                message_type: formData.get('message_type')
+            };
+            
+            if (!data.receiver_id) {
+                NovaGame.showNotification('Please select a recipient empire', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/game/api/send-message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    NovaGame.showNotification(result.message, 'success');
+                    this.reset();
+                } else {
+                    NovaGame.showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                NovaGame.showNotification('Failed to send message', 'error');
+            }
+        });
+    }
+}
+
+function readMessage(messageId) {
+    NovaGame.showNotification('Opening message...', 'info');
+    // Would implement full message view
+}
+
+function replyToMessage(messageId) {
+    NovaGame.showNotification('Composing reply...', 'info');
+    // Would populate reply form
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(event) {
+    const createModal = document.getElementById('create-alliance-modal');
+    const inviteModal = document.getElementById('invite-modal');
+    
+    if (event.target === createModal) {
+        closeCreateAllianceModal();
+    }
+    if (event.target === inviteModal) {
+        closeInviteModal();
+    }
+});
+
+// Close modals with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeCreateAllianceModal();
+        closeInviteModal();
+    }
+});
+</script>
+
+<style>
+.message-item.unread {
+    border-left: 3px solid #44ff44;
+    background: rgba(68, 255, 68, 0.05);
+}
+
+.message-item {
+    transition: all 0.2s ease;
+}
+
+.message-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.02);
+}
+
+.loading {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Modal responsive design */
+@media (max-width: 768px) {
+    #create-alliance-modal > div,
+    #invite-modal > div {
+        width: 95% !important;
+        padding: 20px !important;
+    }
+}
+</style>
+{% endblock %} 

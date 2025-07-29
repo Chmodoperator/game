@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Create Empire - Nova Terra{% endblock %}
+
+{% block content %}
+<div class="terminal-form">
+    <div style="text-align: center; margin-bottom: 20px;">
+        ┌─────────────────────────────────────────────────────────────────────────────────────┐
+        │                           EMPIRE FOUNDING PROTOCOL                                 │
+        │                         [ ESTABLISH YOUR CIVILIZATION ]                            │
+        └─────────────────────────────────────────────────────────────────────────────────────┘
+    </div>
+
+    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid currentColor; opacity: 0.8;">
+        Welcome, Commander {{ user.username }}! 
+        
+        The galaxy awaits your leadership. You must now establish your empire and claim your first territory 
+        in the vast expanse of Nova Terra. Choose wisely - your empire's name and identity will be known 
+        throughout the galaxy.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <label class="form-label" for="empire_name">Empire Name:</label>
+            <input type="text" name="empire_name" id="empire_name" class="form-input" 
+                   placeholder="Name your civilization" required maxlength="100">
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="empire_color">Empire Color:</label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                {% for color in colors %}
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="radio" name="empire_color" value="{{ color }}" 
+                           {% if forloop.first %}checked{% endif %} style="margin-right: 5px;">
+                    <span style="background-color: {{ color }}; width: 20px; height: 20px; border: 1px solid currentColor; display: inline-block; margin-right: 5px;"></span>
+                    {{ color }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="empire_motto">Empire Motto (Optional):</label>
+            <input type="text" name="empire_motto" id="empire_motto" class="form-input" 
+                   placeholder="Your empire's guiding principle" maxlength="200">
+        </div>
+
+        <div class="form-row">
+            <button type="submit" class="form-button">
+                [ FOUND EMPIRE ]
+            </button>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; border-top: 1px solid currentColor; padding-top: 20px;">
+        <div style="opacity: 0.7; font-size: 12px;">
+            ┌─ EMPIRE ESTABLISHMENT BRIEFING ───────────────────────────────────────────────────┐
+            │ • Your empire will be assigned a random starting territory                        │
+            │ • Starting resources: 1000 Energy, 500 Minerals, 300 Food                       │
+            │ • Initial population: 1000 citizens                                               │
+            │ • You will begin with a Command Center in your capital territory                  │
+            │ • Expand wisely - the galaxy is filled with rival empires                        │
+            └────────────────────────────────────────────────────────────────────────────────────┘
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('empire_name').focus();
+    
+    // Real-time empire name validation
+    const nameInput = document.getElementById('empire_name');
+    nameInput.addEventListener('input', function() {
+        // Basic validation feedback
+        if (this.value.length < 3) {
+            this.style.borderColor = '#ff4444';
+        } else {
+            this.style.borderColor = '';
+        }
+    });
+    
+    // Add preview of empire info
+    function updatePreview() {
+        const name = document.getElementById('empire_name').value || '[EMPIRE NAME]';
+        const color = document.querySelector('input[name="empire_color"]:checked').value;
+        const motto = document.getElementById('empire_motto').value || '[NO MOTTO SET]';
+        
+        // Could add a preview section here
+    }
+    
+    document.getElementById('empire_name').addEventListener('input', updatePreview);
+    document.getElementById('empire_motto').addEventListener('input', updatePreview);
+    document.querySelectorAll('input[name="empire_color"]').forEach(input => {
+        input.addEventListener('change', updatePreview);
+    });
+});
+</script>
+{% endblock %} 

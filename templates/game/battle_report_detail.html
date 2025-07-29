@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Battle Report #{{ battle.id }}{% endblock %}
+
+{% block content %}
+<div class="travian-report">
+    <div class="report-content">
+        <div class="battle-summary">
+            <div class="combatants">
+                <div class="attacker">
+                    <div class="combatant-label">Attacker</div>
+                    <div class="combatant-name">{{ battle.attacker.name }}</div>
+                </div>
+                <div class="vs">VS</div>
+                <div class="defender">
+                    <div class="combatant-label">Defender</div>
+                    <div class="combatant-name">{% if battle.defender %}{{ battle.defender.name }}{% else %}Unoccupied Territory{% endif %}</div>
+                </div>
+            </div>
+            
+            <div class="battle-result">
+                <div class="result-label">Result:</div>
+                <div class="result-value {% if battle.result == 'attacker_victory' %}victory{% elif battle.result == 'defender_victory' %}defeat{% else %}ongoing{% endif %}">
+                    {% if battle.result == 'attacker_victory' %}Victory{% elif battle.result == 'defender_victory' %}Defeat{% else %}{{ battle.get_status_display }}{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="forces-section">
+            <div class="forces-header">Forces</div>
+            
+            <div class="forces-grid">
+                <div class="attacker-forces">
+                    <div class="forces-title">Attacker</div>
+                    <table class="forces-table">
+                        <tr class="unit-types">
+                            <td>Infantry<br><small>⚔️10 🛡️15</small></td>
+                            <td>Cavalry<br><small>⚔️40-50 🛡️20-40</small></td>
+                            <td>Archers<br><small>⚔️15 🛡️8</small></td>
+                            <td>Spearmen<br><small>⚔️8 🛡️12-25</small></td>
+                            <td>Spies<br><small>⚔️0 🛡️0</small></td>
+                        </tr>
+                        <tr class="unit-sent">
+                            <td>{{ attacker_units.Infantry|default:0 }}</td>
+                            <td>{{ attacker_units.Cavalry|default:0 }}</td>
+                            <td>{{ attacker_units.Archers|default:0 }}</td>
+                            <td>{{ attacker_units.Spearmen|default:0 }}</td>
+                            <td>{{ attacker_units.Spies|default:0 }}</td>
+                        </tr>
+                        <tr class="unit-casualties">
+                            <td>{{ attacker_casualties.Infantry|default:0 }}</td>
+                            <td>{{ attacker_casualties.Cavalry|default:0 }}</td>
+                            <td>{{ attacker_casualties.Archers|default:0 }}</td>
+                            <td>{{ attacker_casualties.Spearmen|default:0 }}</td>
+                            <td>{{ attacker_casualties.Spies|default:0 }}</td>
+                        </tr>
+                        <tr class="attack-bonuses">
+                            <td colspan="5">
+                                <div class="bonus-info">
+                                    <span class="bonus-item">⚔️ Attack: +{{ battle.attacker_attack_bonus|default:0 }}%</span>
+                                    <span class="bonus-item">🏰 Barracks: +{{ battle.attacker_barracks_bonus|default:0 }}%</span>
+                                    <span class="bonus-item">📚 Research: +{{ battle.attacker_research_bonus|default:0 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="resources-captured">
+                            <td colspan="5">
+                                <div class="resources-row">
+                                    <span class="resource-item">🌾 {{ battle.resources_captured.food|default:0 }}</span>
+                                    <span class="resource-item">⚡ {{ battle.resources_captured.energy|default:0 }}</span>
+                                    <span class="resource-item">⛏️ {{ battle.resources_captured.minerals|default:0 }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="defender-forces">
+                    <div class="forces-title">Defender</div>
+                    <table class="forces-table">
+                        <tr class="unit-types">
+                            <td>Infantry<br><small>⚔️10 🛡️15</small></td>
+                            <td>Cavalry<br><small>⚔️40-50 🛡️20-40</small></td>
+                            <td>Archers<br><small>⚔️15 🛡️8</small></td>
+                            <td>Spearmen<br><small>⚔️8 🛡️12-25</small></td>
+                            <td>{% if defender_units.Monsters %}Monsters<br><small>⚔️35-150 🛡️25-130</small>{% else %}Spies<br><small>⚔️0 🛡️0</small>{% endif %}</td>
+                        </tr>
+                        <tr class="unit-sent">
+                            <td>{{ defender_units.Infantry|default:0 }}</td>
+                            <td>{{ defender_units.Cavalry|default:0 }}</td>
+                            <td>{{ defender_units.Archers|default:0 }}</td>
+                            <td>{{ defender_units.Spearmen|default:0 }}</td>
+                            <td>{{ defender_units.Monsters|default:0 }}{{ defender_units.Spies|default:0 }}</td>
+                        </tr>
+                        <tr class="unit-casualties">
+                            <td>{{ defender_casualties.Infantry|default:0 }}</td>
+                            <td>{{ defender_casualties.Cavalry|default:0 }}</td>
+                            <td>{{ defender_casualties.Archers|default:0 }}</td>
+                            <td>{{ defender_casualties.Spearmen|default:0 }}</td>
+                            <td>{{ defender_casualties.Monsters|default:0 }}{{ defender_casualties.Spies|default:0 }}</td>
+                        </tr>
+                        <tr class="defense-bonuses">
+                            <td colspan="5">
+                                <div class="bonus-info">
+                                    <span class="bonus-item">🛡️ Defense: +{{ battle.defender_defense_bonus|default:0 }}%</span>
+                                    <span class="bonus-item">🏰 Walls: +{{ battle.defender_walls_bonus|default:0 }}%</span>
+                                    <span class="bonus-item">📚 Research: +{{ battle.defender_research_bonus|default:0 }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.travian-report {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: #1a1a1a;
+    font-family: Arial, sans-serif;
+    color: #fff;
+}
+
+.report-content {
+    padding: 15px;
+    background: #1a1a1a;
+}
+
+.battle-summary {
+    background: #2a2a2a;
+    border: 2px solid #44ff44;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.combatants {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.attacker, .defender {
+    text-align: center;
+    flex: 1;
+}
+
+.combatant-label {
+    font-size: 11px;
+    color: #aaa;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.combatant-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.vs {
+    font-size: 18px;
+    font-weight: bold;
+    color: #44ff44;
+    margin: 0 15px;
+}
+
+.battle-result {
+    text-align: center;
+    padding-top: 10px;
+    border-top: 1px solid #44ff44;
+}
+
+.result-label {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 3px;
+}
+
+.result-value {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 5px 15px;
+    border-radius: 15px;
+    display: inline-block;
+}
+
+.result-value.victory {
+    background: #44ff44;
+    color: #000;
+}
+
+.result-value.defeat {
+    background: #ff4444;
+    color: #fff;
+}
+
+.result-value.ongoing {
+    background: #ffaa00;
+    color: #000;
+}
+
+.forces-section {
+    background: #2a2a2a;
+    border: 2px solid #44ff44;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.forces-header {
+    font-size: 16px;
+    font-weight: bold;
+    color: #44ff44;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.forces-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.attacker-forces, .defender-forces {
+    background: #1a1a1a;
+    border: 1px solid #44ff44;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.forces-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #44ff44;
+    margin-bottom: 8px;
+    text-align: center;
+    border-bottom: 1px solid #44ff44;
+    padding-bottom: 5px;
+}
+
+.forces-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.forces-table td {
+    padding: 5px;
+    text-align: center;
+    border: 1px solid #333;
+}
+
+.unit-types {
+    background: #333;
+    color: #44ff44;
+    font-weight: bold;
+}
+
+.unit-sent {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.unit-casualties {
+    background: #2a2a2a;
+    color: #ff4444;
+    font-weight: bold;
+}
+
+.attack-bonuses, .defense-bonuses {
+    background: #2a2a2a;
+    border-top: 1px solid #44ff44;
+}
+
+.bonus-info {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 5px;
+}
+
+.bonus-item {
+    font-size: 10px;
+    color: #ffaa00;
+    font-weight: bold;
+}
+
+.resources-captured {
+    background: #1a1a1a;
+    border-top: 2px solid #44ff44;
+}
+
+.resources-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 5px;
+}
+
+.resource-item {
+    font-size: 11px;
+    color: #44ff44;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .combatants {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .vs {
+        margin: 5px 0;
+    }
+    
+    .resources-row {
+        flex-direction: column;
+        gap: 3px;
+    }
+}
+</style>
+{% endblock %} 

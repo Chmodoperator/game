@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% load math_filters %}
+
+{% block title %}Barracks Management - {{ building.get_building_type_display }} Lv.{{ building.level }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="text-align: center; margin-bottom: 20px;">
+    <h1 style="color: #ff4444; margin-bottom: 10px;">
+        🏰 Barracks Command Center
+    </h1>
+    <div style="color: #aaa; font-size: 14px;">
+        Territory ({{ building.territory.x }}, {{ building.territory.y }}) - Level {{ building.level }}
+    </div>
+    <div style="margin-top: 10px;">
+        <a href="{% url 'game:buildings' %}" class="form-button" style="background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-color: #aaa; font-size: 12px; padding: 5px 15px;">
+            ← Back to Buildings
+        </a>
+    </div>
+</div>
+
+<!-- Building Status -->
+<div style="background: linear-gradient(145deg, #2a1a1a, #1a2a1a); border: 2px solid #ff4444; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #ff4444;">🏰 Barracks Status</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-family: monospace;">
+        <div>
+            <strong style="color: #ffaa00;">Building Level:</strong><br>
+            <span style="color: #44ff44; font-size: 18px;">{{ building.level }}{% if building.level >= 100 %} <span style="color: #ffaa00;">(MAX)</span>{% endif %}</span>
+        </div>
+        <div>
+            <strong style="color: #ffaa00;">Unit Capacity:</strong><br>
+            <span style="color: #44ff44; font-size: 18px;">+{% widthratio building.level 1 100 %} troops</span>
+        </div>
+        <div>
+            <strong style="color: #ffaa00;">Current Forces:</strong><br>
+            <span style="color: #00aaff; font-size: 18px;">{{ armies|length }} unit groups</span>
+        </div>
+        <div>
+            <strong style="color: #ffaa00;">Status:</strong><br>
+            <span style="color: {% if building.upgrade_started %}#ffaa00{% else %}#44ff44{% endif %}; font-size: 18px;">
+                {% if building.upgrade_started %}🔨 UPGRADING{% else %}⚡ OPERATIONAL{% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Current Forces -->
+{% if armies %}
+<div style="background: linear-gradient(145deg, #1a2a1a, #2a1a1a); border: 2px solid #44ff44; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #44ff44;">🎖️ Stationed Forces</h3>
+    
+    {% for army in armies %}
+    <div style="background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; color: #ff4444;">
+                {% if army.unit_type == "infantry" %}🪖 Infantry Battalion
+                {% elif army.unit_type == "tanks" %}🛡️ Tank Division
+                {% elif army.unit_type == "aircraft" %}🚁 Air Squadron
+                {% elif army.unit_type == "naval" %}🚢 Naval Fleet
+                {% elif army.unit_type == "cyber" %}💻 Cyber Corps
+                {% elif army.unit_type == "mechs" %}🤖 Mech Regiment
+                {% endif %}
+            </h4>
+            <div style="font-size: 12px; color: #aaa;">
+                {{ army.size }} units • Combat: {{ army.get_combat_strength }}
+            </div>
+        </div>
+        
+        {% if army.is_recruiting %}
+        <div style="background: rgba(0,170,255,0.1); border: 1px solid #00aaff; border-radius: 5px; padding: 8px; margin-top: 10px;">
+            <strong style="color: #00aaff;">🔄 RECRUITING:</strong> {{ army.current_size }}/{{ army.target_size }} (+{{ army.recruitment_rate|floatformat:1 }}/sec)
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Recruitment Center -->
+<div style="background: linear-gradient(145deg, #1a2a1a, #2a1a1a); border: 2px solid #ffaa00; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #ffaa00;">🎯 Military Recruitment</h3>
+    
+    <div style="background: rgba(255,170,0,0.1); border: 1px solid #ffaa00; border-radius: 5px; padding: 10px; margin-bottom: 15px; font-size: 12px;">
+        <strong>🏰 Barracks Benefits:</strong><br>
+        • Train military units for territorial defense<br>
+        • Each level increases unit capacity by 100<br>
+        • Higher level barracks train units faster<br>
+        • Central command for all military operations
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- Left Panel - Recruitment Form -->
+        <div>
+            <form id="recruit-form">
+                {% csrf_token %}
+                <input type="hidden" name="territory_id" value="{{ building.territory.id }}">
+                
+                <div class="form-row">
+                    <label class="form-label">Unit Type:</label>
+                    <select name="unit_type" class="form-input" id="unit-type-select" style="width: 100%;" onchange="updateRecruitmentInfo()">
+                        <option value="">Select unit type...</option>
+                        <option value="infantry">🪖 Infantry</option>
+                        <option value="tanks">🛡️ Tanks</option>
+                        <option value="aircraft">🚁 Aircraft</option>
+                        <option value="naval">🚢 Naval</option>
+                        <option value="cyber">💻 Cyber</option>
+                        <option value="mechs">🤖 Mechs</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <label class="form-label">Recruitment Size:</label>
+                    <input type="number" name="size" class="form-input" style="width: 100%;" 
+                           placeholder="Enter number of units" 
+                           min="1" max="10000" 
+                           value="100"
+                           onchange="updateRecruitmentInfo()">
+                    <div style="font-size: 10px; color: #666; margin-top: 3px;">
+                        💡 Barracks Lv.{{ building.level }} can efficiently train large forces
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <button type="submit" class="form-button" style="background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44; width: 100%; font-size: 16px; padding: 12px;">
+                        [ RECRUIT FORCES ]
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Right Panel - Unit Information -->
+        <div>
+            <div id="recruitment-info" style="background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 15px; min-height: 200px;">
+                <div style="text-align: center; color: #666; font-style: italic; margin-top: 50px;">
+                    👈 Select unit type to see recruitment details
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upgrade Section -->
+{% if building.level < 100 %}
+<div style="background: linear-gradient(145deg, #2a2a1a, #1a1a2a); border: 2px solid #00aaff; border-radius: 10px; padding: 20px;">
+    <h3 style="margin-top: 0; color: #00aaff;">⬆️ Barracks Upgrade</h3>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <h4 style="color: #ffaa00;">Current Level {{ building.level }} Benefits:</h4>
+            <ul style="color: #aaa; line-height: 1.6;">
+                <li>Unit Capacity: +{% widthratio building.level 1 100 %} troops</li>
+                <li>Training Efficiency: Level {{ building.level }}</li>
+                <li>Command Range: Standard</li>
+            </ul>
+        </div>
+        <div>
+            <h4 style="color: #44ff44;">Level {{ building.level|add:1 }} Benefits:</h4>
+            <ul style="color: #aaa; line-height: 1.6;">
+                <li>Unit Capacity: +{% widthratio building.level|add:1 1 100 %} troops (+100)</li>
+                <li>Training Efficiency: Level {{ building.level|add:1 }}</li>
+                <li>Command Range: Enhanced</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 5px; padding: 15px; margin-bottom: 15px; font-family: monospace; font-size: 12px;">
+            <strong style="color: #ffaa00;">UPGRADE TO LV.{{ building.level|add:1 }} COST:</strong><br>
+            <div style="display: flex; gap: 20px; margin-top: 8px;">
+                <span style="color: {% if empire.energy >= upgrade_cost.energy %}#44ff44{% else %}#ff4444{% endif %};">
+                    ⚡{{ upgrade_cost.energy }}
+                </span>
+                <span style="color: {% if empire.minerals >= upgrade_cost.minerals %}#44ff44{% else %}#ff4444{% endif %};">
+                    ⛏{{ upgrade_cost.minerals }}
+                </span>
+                <span style="color: {% if empire.food >= upgrade_cost.food %}#44ff44{% else %}#ff4444{% endif %};">
+                    🌾{{ upgrade_cost.food }}
+                </span>
+            </div>
+            {% if not can_afford %}
+            <div style="color: #ff4444; margin-top: 8px; font-size: 10px;">
+                ⚠ Insufficient resources for upgrade
+            </div>
+            {% endif %}
+        </div>
+        
+        <button class="form-button {% if not can_afford %}disabled{% endif %}" 
+                onclick="upgradeBuilding({{ building.id }})"
+                {% if not can_afford %}disabled{% endif %}
+                style="{% if can_afford %}background: linear-gradient(145deg, #2a4a2a, #1a3a1a); border-color: #44ff44;{% else %}background: linear-gradient(145deg, #2a2a2a, #1a1a1a); border-color: #444; color: #666;{% endif %} width: 100%; font-size: 16px; padding: 12px;">
+            {% if can_afford %}
+            [ UPGRADE TO LEVEL {{ building.level|add:1 }} ]
+            {% else %}
+            [ INSUFFICIENT RESOURCES ]
+            {% endif %}
+        </button>
+    </div>
+</div>
+{% else %}
+<div style="background: linear-gradient(145deg, #2a2a1a, #1a1a2a); border: 2px solid #ffaa00; border-radius: 10px; padding: 20px; text-align: center;">
+    <h3 style="color: #ffaa00; margin-bottom: 15px;">🏆 Maximum Level Achieved</h3>
+    <p style="color: #aaa;">This barracks has reached the maximum level of 100. It operates at peak efficiency!</p>
+</div>
+{% endif %}
+
+<script>
+// Unit information data (same as military page)
+const unitInfo = {
+    'infantry': {
+        name: '🪖 Infantry',
+        cost_per_100: 'Cost: 50⚡ 30⛏ 100🌾 per 100 units',
+        description: 'Versatile ground forces forming the backbone of any military operation.',
+        benefits: ['Cost-effective mass deployment', 'Effective against cyber warfare units', 'High mobility in various terrains', 'Essential for territorial control'],
+        weaknesses: 'Vulnerable to tanks and aircraft',
+        recruitment_time: '1 minute per 100 units'
+    },
+    'tanks': {
+        name: '🛡️ Tanks',
+        cost_per_100: 'Cost: 300⚡ 800⛏ 100🌾 per 100 units',
+        description: 'Heavy armored vehicles designed for breakthrough operations and siege warfare.',
+        benefits: ['Devastating against infantry and fortifications', 'High armor protection', 'Excellent for territorial assault', 'Superior firepower'],
+        weaknesses: 'Vulnerable to aircraft and mechs',
+        recruitment_time: '6 minutes per 100 units'
+    },
+    'aircraft': {
+        name: '🚁 Aircraft',
+        cost_per_100: 'Cost: 1200⚡ 400⛏ 320🌾 per 100 units',
+        description: 'Advanced air units providing rapid strike capabilities and battlefield supremacy.',
+        benefits: ['Superior mobility and range', 'Effective against tanks and naval units', 'Rapid deployment capability', 'Strategic reconnaissance'],
+        weaknesses: 'Vulnerable to cyber attacks and mechs',
+        recruitment_time: '20 minutes per 100 units'
+    },
+    'naval': {
+        name: '🚢 Naval',
+        cost_per_100: 'Cost: 667⚡ 833⛏ 200🌾 per 100 units',
+        description: 'Maritime combat vessels for coastal operations and strategic bombardment.',
+        benefits: ['Coastal bombardment capabilities', 'Strategic mobility via waterways', 'Effective against infrastructure', 'Long-range engagement'],
+        weaknesses: 'Vulnerable to aircraft and cyber warfare',
+        recruitment_time: '13 minutes per 100 units'
+    },
+    'cyber': {
+        name: '💻 Cyber',
+        cost_per_100: 'Cost: 2000⚡ 250⛏ 750🌾 per 100 units',
+        description: 'Elite digital warfare specialists capable of disrupting enemy technology.',
+        benefits: ['Electronic warfare capabilities', 'Effective against aircraft and naval units', 'Advanced hacking operations', 'Technology disruption'],
+        weaknesses: 'Vulnerable to infantry and mechs',
+        recruitment_time: '30 minutes per 100 units'
+    },
+    'mechs': {
+        name: '🤖 Mechs',
+        cost_per_100: 'Cost: 5000⚡ 4000⛏ 2000🌾 per 100 units',
+        description: 'Ultimate combat machines representing the pinnacle of military technology.',
+        benefits: ['Superior combat effectiveness', 'Effective against tanks and cyber units', 'Advanced armor and weapons', 'Elite battlefield presence'],
+        weaknesses: 'Vulnerable to infantry swarms and aircraft',
+        recruitment_time: '100 minutes per 100 units'
+    }
+};
+
+function updateRecruitmentInfo() {
+    const unitSelect = document.getElementById('unit-type-select');
+    const sizeInput = document.querySelector('input[name="size"]');
+    const infoDiv = document.getElementById('recruitment-info');
+    
+    const unitType = unitSelect.value;
+    const size = parseInt(sizeInput.value) || 100;
+    
+    if (unitType && unitInfo[unitType]) {
+        const info = unitInfo[unitType];
+        const costMultiplier = size / 100;
+        
+        // Extract base costs and multiply
+        const costMatch = info.cost_per_100.match(/(\d+)⚡ (\d+)⛏ (\d+)🌾/);
+        if (costMatch) {
+            const [, energy, minerals, food] = costMatch.map(Number);
+            const totalEnergy = Math.round(energy * costMultiplier);
+            const totalMinerals = Math.round(minerals * costMultiplier);
+            const totalFood = Math.round(food * costMultiplier);
+            
+            const canAfford = {{ empire.energy }} >= totalEnergy && 
+                            {{ empire.minerals }} >= totalMinerals && 
+                            {{ empire.food }} >= totalFood;
+            
+            infoDiv.innerHTML = `
+                <h4 style="color: #44ff44; margin-top: 0;">${info.name}</h4>
+                <div style="color: ${canAfford ? '#44ff44' : '#ff4444'}; font-size: 12px; margin-bottom: 10px;">
+                    Total Cost: ${totalEnergy}⚡ ${totalMinerals}⛏ ${totalFood}🌾
+                </div>
+                <p style="color: #ccc; line-height: 1.5; margin-bottom: 15px;">${info.description}</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #00aaff;">Combat Advantages:</strong>
+                    <ul style="margin: 5px 0; padding-left: 20px; color: #aaa;">
+                        ${info.benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(255,100,100,0.1); border: 1px solid #ff4444; border-radius: 5px; padding: 8px; margin-bottom: 10px;">
+                    <strong style="color: #ff4444;">⚠ Weakness:</strong>
+                    <div style="color: #ccc; font-size: 11px; margin-top: 3px;">${info.weaknesses}</div>
+                </div>
+                
+                <div style="background: rgba(255,170,0,0.1); border: 1px solid #ffaa00; border-radius: 5px; padding: 8px;">
+                    <strong style="color: #ffaa00;">⏱ Training Time:</strong>
+                    <div style="color: #ccc; font-size: 11px; margin-top: 3px;">${info.recruitment_time}</div>
+                    <div style="color: #44ff44; font-size: 10px; margin-top: 2px;">🏰 Barracks Lv.{{ building.level }} provides training bonuses</div>
+                </div>
+            `;
+        }
+    } else {
+        infoDiv.innerHTML = `
+            <div style="text-align: center; color: #666; font-style: italic; margin-top: 50px;">
+                👈 Select unit type to see recruitment details
+            </div>
+        `;
+    }
+}
+
+function upgradeBuilding(buildingId) {
+    fetch('/game/api/build/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            building_type: '{{ building.building_type }}',
+            territory_id: {{ building.territory.id }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            NovaGame.showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            NovaGame.showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        NovaGame.showNotification('Upgrade failed: ' + error.message, 'error');
+    });
+}
+
+// Form handling
+document.addEventListener('DOMContentLoaded', function() {
+    const recruitForm = document.getElementById('recruit-form');
+    if (recruitForm) {
+        recruitForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                territory_id: parseInt(formData.get('territory_id')),
+                unit_type: formData.get('unit_type'),
+                size: parseInt(formData.get('size'))
+            };
+            
+            if (!data.unit_type) {
+                NovaGame.showNotification('Please select a unit type!', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/game/api/recruit/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    NovaGame.showNotification(result.message, 'success');
+                    // Reset form
+                    this.reset();
+                    updateRecruitmentInfo();
+                    
+                    // Refresh page after a short delay to show new recruitment
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    NovaGame.showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                NovaGame.showNotification('Recruitment failed: ' + error.message, 'error');
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.form-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-button.disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+</style>
+{% endblock %} 
